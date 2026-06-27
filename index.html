@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>first_step | First Step</title>
+    <meta
+      name="description"
+      content="first_step is a sponsor-funded first-step pathway for young people facing housing instability, homelessness risk, or barriers to financial stability."
+    >
+    <link rel="icon" href="assets/brand/ico.ico" sizes="any">
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="first_step home">
+        <img src="assets/brand/first_step_logo-lettermark.svg" alt="" class="brand-mark">
+        <span>first_step</span>
+      </a>
+      <nav class="main-nav" aria-label="Primary navigation">
+        <a href="#pathways">Pathways</a>
+        <a href="#popup">Pop-up</a>
+        <a href="#partners">Partners</a>
+        <a href="#sponsors">Sponsors</a>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="hero-band" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <p class="eyebrow">First Step digital prototype</p>
+          <h1 id="hero-title">A safer first step into support, study, work, and confidence.</h1>
+          <p class="hero-lede">
+            first_step is a low-pressure bridge for young people aged 16 to 25 facing housing
+            instability, homelessness risk, or barriers to financial stability.
+          </p>
+          <div class="hero-actions">
+            <a class="button button-primary" href="#pathways">Find a next step</a>
+            <a class="button button-secondary" href="#popup">See the pilot</a>
+          </div>
+        </div>
+        <div class="hero-visual" aria-hidden="true">
+          <img src="assets/brand/first_step_logo.svg" alt="">
+        </div>
+      </section>
+
+      <section class="urgent-strip" aria-label="Important service boundary">
+        <strong>Not a 24/7 crisis service.</strong>
+        <span>
+          This prototype is a supported pathway and referral bridge. Crisis, housing, and youth
+          work support must stay with qualified services and partners.
+        </span>
+      </section>
+
+      <section class="section intro-section" aria-labelledby="mission-title">
+        <div>
+          <p class="eyebrow">Mission</p>
+          <h2 id="mission-title">Make the first step easier before everything becomes a collapse.</h2>
+        </div>
+        <div class="intro-copy">
+          <p>
+            The hardest point is often before a young person is connected, referred, and ready
+            enough to join a full program. first_step creates small, practical entry points that
+            do not force disclosure or make someone prove they are struggling.
+          </p>
+          <p>
+            The model connects public pop-ups, a free digital platform, youth-worker support,
+            TAFE and VCE VM options, existing social enterprises, and paid placement pathways.
+          </p>
+        </div>
+      </section>
+
+      <section class="image-story" aria-label="first_step visual story">
+        <figure class="story-photo story-photo-large">
+          <img src="assets/images/fs_img_1.jpg" alt="Melbourne skyline viewed over surrounding suburbs." loading="lazy">
+          <figcaption>Built for young people in Melbourne and Victoria.</figcaption>
+        </figure>
+        <figure class="story-photo">
+          <img src="assets/images/fs_img_2.jpg" alt="Young adult writing in a notebook outdoors." loading="lazy">
+          <figcaption>Small practical steps toward study, work, and confidence.</figcaption>
+        </figure>
+        <figure class="story-photo">
+          <img src="assets/images/fs_img_3.jpg" alt="Hands raised together in support." loading="lazy">
+          <figcaption>Support that is warm, connected, and not built on disclosure.</figcaption>
+        </figure>
+      </section>
+
+      <section class="section pathway-section" id="pathways" aria-labelledby="pathway-title">
+        <div class="section-heading">
+          <p class="eyebrow">What now?</p>
+          <h2 id="pathway-title">Choose the first thing that feels possible.</h2>
+          <p>
+            No big intake form here. Pick a starting point and the page will suggest a calmer
+            next step.
+          </p>
+        </div>
+
+        <div class="pathway-grid">
+          <form class="pathway-tool" id="pathway-tool">
+            <fieldset>
+              <legend>Where are you starting from?</legend>
+              <label class="choice">
+                <input type="radio" name="starting" value="unstable" checked>
+                <span>
+                  <strong>Housing feels unstable</strong>
+                  <small>Couch surfing, unsafe at home, temporary place, or not sure what counts.</small>
+                </span>
+              </label>
+              <label class="choice">
+                <input type="radio" name="starting" value="work">
+                <span>
+                  <strong>I need work or money options</strong>
+                  <small>Resume, interview, paid placement, or first-shift confidence.</small>
+                </span>
+              </label>
+              <label class="choice">
+                <input type="radio" name="starting" value="study">
+                <span>
+                  <strong>I need a study pathway</strong>
+                  <small>TAFE, VCE VM, short courses, or a supported return to learning.</small>
+                </span>
+              </label>
+            </fieldset>
+
+            <fieldset>
+              <legend>What would help today?</legend>
+              <div class="checkbox-row">
+                <label><input type="checkbox" name="support" value="food"> Food</label>
+                <label><input type="checkbox" name="support" value="transport"> Transport</label>
+                <label><input type="checkbox" name="support" value="clothes"> Clothes</label>
+                <label><input type="checkbox" name="support" value="chat"> Chat support</label>
+              </div>
+            </fieldset>
+
+            <button class="button button-primary" type="submit">Show next step</button>
+          </form>
+
+          <article class="result-panel" aria-live="polite" id="pathway-result">
+            <p class="tag">Suggested first step</p>
+            <h3>Start with a youth-worker check-in.</h3>
+            <p>
+              A short conversation can map what is urgent, what can wait, and which partner
+              pathway is safest. No one needs to share a full story at a booth or in chat.
+            </p>
+            <ul>
+              <li>Confirm immediate safety and basic needs.</li>
+              <li>Map one support, study, or work option.</li>
+              <li>Offer a warm referral instead of another cold link.</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="section resources-section" aria-labelledby="resources-title">
+        <div class="section-heading">
+          <p class="eyebrow">Free platform</p>
+          <h2 id="resources-title">Plain-language tools for low-energy days.</h2>
+        </div>
+        <div class="resource-list">
+          <article class="resource-card">
+            <span class="resource-icon red-block" aria-hidden="true"></span>
+            <h3>Resume help</h3>
+            <p>Short video scripts, simple resume prompts, and a one-page first-job template.</p>
+          </article>
+          <article class="resource-card">
+            <span class="resource-icon teal-block" aria-hidden="true"></span>
+            <h3>Interview support</h3>
+            <p>Practice answers, what to wear, what to bring, and what to say if life is messy.</p>
+          </article>
+          <article class="resource-card">
+            <span class="resource-icon gold-block" aria-hidden="true"></span>
+            <h3>Practical support</h3>
+            <p>Food, transport, clothing, hygiene, and local support options before a shift.</p>
+          </article>
+          <article class="resource-card">
+            <span class="resource-icon black-block" aria-hidden="true"></span>
+            <h3>Pathway map</h3>
+            <p>TAFE, VCE VM, paid placement, youth service, and social enterprise next steps.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section popup-section" id="popup" aria-labelledby="popup-title">
+        <div class="popup-copy">
+          <p class="eyebrow">Pilot format</p>
+          <h2 id="popup-title">A public pop-up with a quieter digital door.</h2>
+          <p>
+            The pilot combines a sponsor-funded merch stall with youth-worker-supported
+            conversations and a mobile-first online pathway. A young person can browse,
+            scan, talk, take information away, or come back later through chat or video.
+          </p>
+        </div>
+        <ol class="journey-list">
+          <li>
+            <span>1</span>
+            <div>
+              <h3>Find the stall</h3>
+              <p>At a TAFE campus, VCE VM event, council youth expo, market, or service open day.</p>
+            </div>
+          </li>
+          <li>
+            <span>2</span>
+            <div>
+              <h3>Choose pressure level</h3>
+              <p>Browse merch, scan the platform, speak privately, or leave with a simple card.</p>
+            </div>
+          </li>
+          <li>
+            <span>3</span>
+            <div>
+              <h3>Take a second step</h3>
+              <p>Warm referral, paid placement lead, study option, support check-in, or follow-up.</p>
+            </div>
+          </li>
+        </ol>
+      </section>
+
+      <section class="section partner-section" id="partners" aria-labelledby="partners-title">
+        <div class="section-heading">
+          <p class="eyebrow">Partner model</p>
+          <h2 id="partners-title">first_step designs and coordinates the roads between.</h2>
+        </div>
+        <div class="partner-grid">
+          <article>
+            <img class="partner-photo" src="assets/images/fs_youth-worker.jpg" alt="Youth worker holding a notebook." loading="lazy">
+            <h3>Youth workers</h3>
+            <p>Consent-led engagement, referral boundaries, safeguarding, and follow-up.</p>
+          </article>
+          <article>
+            <img class="partner-photo" src="assets/images/fs-tafe.png" alt="Students walking together on campus." loading="lazy">
+            <h3>TAFEs and VCE VM</h3>
+            <p>Study pathways, campus access, events, and practical learning options.</p>
+          </article>
+          <article>
+            <img class="partner-photo" src="assets/images/fs-social-ent.jpeg" alt="Person receiving a haircut in a social enterprise setting." loading="lazy">
+            <h3>Social enterprises</h3>
+            <p>Work-readiness models, paid placement pathways, and proven support settings.</p>
+          </article>
+          <article>
+            <img class="partner-photo" src="assets/images/fs_aid.jpg" alt="Support workers sorting practical aid supplies." loading="lazy">
+            <h3>Youth services</h3>
+            <p>Specialist housing, safety, mental health, and case-management referrals.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section sponsor-section" id="sponsors" aria-labelledby="sponsors-title">
+        <div>
+          <p class="eyebrow">Sponsor proposition</p>
+          <h2 id="sponsors-title">A visible pathway, not a logo stuck on a good cause.</h2>
+          <p>
+            Sponsors fund booth delivery, youth-worker support, platform access, pathway
+            contributions, and impact reporting. The exchange is visibility, staff engagement,
+            youth employment alignment, CSR value, and measurable next-step outcomes.
+          </p>
+        </div>
+        <div class="impact-panel">
+          <h3>Pilot measures</h3>
+          <ul>
+            <li>Booth interactions and platform visits</li>
+            <li>Guided pathways completed</li>
+            <li>Warm referrals made and accepted</li>
+            <li>Paid placement opportunities created</li>
+            <li>Participant, partner, and sponsor feedback</li>
+          </ul>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer" aria-labelledby="footer-title">
+      <div class="footer-brand">
+        <img src="assets/brand/first_step_mascot.svg" alt="First Step mascot" class="footer-logo footer-mascot">
+        <div>
+          <h2 id="footer-title">first_step</h2>
+          <p>
+            A sponsor-funded first-step pathway concept for young people facing housing
+            instability, homelessness risk, or barriers to financial stability.
+          </p>
+        </div>
+      </div>
+
+      <nav class="footer-links" aria-label="Footer navigation">
+        <h3>Explore</h3>
+        <a href="#pathways">Pathways</a>
+        <a href="#popup">Pilot model</a>
+        <a href="#partners">Partners</a>
+        <a href="#sponsors">Sponsors</a>
+      </nav>
+
+      <div class="footer-note">
+        <h3>Project Status</h3>
+        <p>
+          SEN301 Assessment 2 prototype. Safeguarding, privacy, payment structures, crisis
+          escalation, and partner review still need validation before delivery.
+        </p>
+      </div>
+
+      <div class="footer-bottom">
+        <p>Not a 24/7 crisis service. Qualified services and partners remain essential.</p>
+        <p>
+          Designed by
+          <a href="https://denby.design" target="_blank" rel="noopener noreferrer">denby.design</a>
+        </p>
+      </div>
+    </footer>
+
+    <script src="app.js"></script>
+  </body>
+</html>
