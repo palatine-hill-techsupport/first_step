@@ -203,7 +203,9 @@ p { margin: 0 0 1.2rem; }
 .choice-grid button:hover { background: var(--mint); transform: translate(-2px, -2px); box-shadow: 4px 4px 0 var(--black); }
 .choice-grid button:disabled { cursor: wait; opacity: .65; transform: none; box-shadow: none; }
 .question-card { background: var(--paper); border: 3px solid var(--black); box-shadow: var(--shadow); padding: clamp(1.5rem, 4vw, 3.5rem); }
-.back-button { min-height: 44px; display: inline-flex; align-items: center; gap: .4rem; border: 0; background: transparent; padding: 0; margin-bottom: 2rem; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; font-weight: 700; }
+.back-button { min-height: 44px; display: flex; align-items: center; gap: .4rem; border: 0; background: transparent; padding: 0; margin-bottom: 1.25rem; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; font-weight: 700; width: max-content; }
+.question-card > .eyebrow { display: flex; margin-bottom: .55rem; }
+.question-card > h2 { margin-bottom: 1.8rem; }
 .two-choice, .format-choice-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin: 2rem 0; }
 .two-choice button, .format-choice-grid button { min-height: 190px; padding: 1.5rem; text-align: left; background: var(--cream); border: 2px solid var(--black); display: flex; flex-direction: column; gap: .7rem; cursor: pointer; position: relative; }
 .two-choice button:hover, .format-choice-grid button.selected { background: var(--mint); box-shadow: 5px 5px 0 var(--black); }
