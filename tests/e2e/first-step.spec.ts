@@ -145,10 +145,20 @@ test("merch store uses all five supplied product mockups", async ({ page }) => {
   await expect(page.getByText("No pretend checkout")).toBeVisible();
 });
 
+test("partner impact dashboard keeps its demonstration and privacy boundaries visible", async ({ page }) => {
+  await page.goto("/impact-dashboard");
+  await expect(page.getByText("Demonstration pilot data").first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Did the bridge work?" })).toBeVisible();
+  await expect(page.getByText("67% completed a guided pathway")).toBeVisible();
+  await expect(page.getByText("Sponsor funding does not purchase access to participant data.")).toBeVisible();
+  await expect(page.getByText("jamie@example.test")).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Partner impact demo" })).toHaveCount(1);
+});
+
 test("key layouts do not overflow at required breakpoints", async ({ page }) => {
   for (const width of [375, 768, 1024, 1440]) {
     await page.setViewportSize({ width, height: 900 });
-    for (const route of ["/", "/book", "/resources", "/about", "/merch"]) {
+    for (const route of ["/", "/book", "/resources", "/about", "/merch", "/impact-dashboard"]) {
       await page.goto(route);
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       expect(overflow, `${route} at ${width}px`).toBeLessThanOrEqual(0);
@@ -157,7 +167,7 @@ test("key layouts do not overflow at required breakpoints", async ({ page }) => 
 });
 
 test("key pages have no serious axe violations", async ({ page }) => {
-  for (const route of ["/", "/start", "/book", "/resources", "/about", "/merch", "/impact"]) {
+  for (const route of ["/", "/start", "/book", "/resources", "/about", "/merch", "/impact", "/impact-dashboard"]) {
     await page.goto(route);
     const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze();
     expect(results.violations.filter((violation) => ["serious", "critical"].includes(violation.impact || "")), `${route} accessibility`).toEqual([]);
