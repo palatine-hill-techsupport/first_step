@@ -6,6 +6,7 @@ export const TOPICS = [
   "Food or transport",
   "Resume or interviews",
   "I am not sure",
+  "Something else",
 ] as const;
 
 export type Topic = (typeof TOPICS)[number];

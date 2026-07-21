@@ -5,14 +5,16 @@ import {
   ArrowRight,
   BadgeCheck,
   Banknote,
+  Bookmark,
   BookOpen,
   BriefcaseBusiness,
   CalendarDays,
   Check,
   CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
-  CircleDollarSign,
+  CircleHelp,
   Clock3,
   ExternalLink,
   Eye,
@@ -24,7 +26,6 @@ import {
   Menu,
   MessageCircle,
   Phone,
-  Save,
   Search,
   ShieldCheck,
   SlidersHorizontal,
@@ -35,20 +36,48 @@ import {
   Video,
   X,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { addDays, addMinutes, format, formatISO } from "date-fns";
 import { usePathname, useRouter } from "next/navigation";
 import { FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { resources, urgentResources, workers } from "@/lib/demo-data";
 import { generateSlots, makeIcs, makeToken, recommendPathway, topicsFromSelection } from "@/lib/domain";
 import { demoRepository } from "@/lib/repository";
+import { TOPICS } from "@/lib/types";
 import type { Appointment, AppointmentFormat, DemoState, Resource, Role, Topic } from "@/lib/types";
 
 const navigation = [
   ["Start here", "/start"],
-  ["Book a worker", "/book"],
+  ["Book a youth worker", "/book"],
   ["Useful now", "/resources"],
   ["About", "/about"],
 ] as const;
+
+type SupportTopic = Topic | "Somewhere safe" | "Talk to someone";
+
+const supportTopicIcons: Record<SupportTopic, LucideIcon> = {
+  "Somewhere safe": House,
+  "Housing or somewhere safe": House,
+  "Talk to someone": MessageCircle,
+  Work: BriefcaseBusiness,
+  Money: Banknote,
+  "Study or training": GraduationCap,
+  "Food or transport": TrainFront,
+  "Resume or interviews": BookOpen,
+  "I am not sure": Sparkles,
+  "Something else": CircleHelp,
+};
+
+function SupportTopicIcon({ topic }: { topic: string }) {
+  const Icon = supportTopicIcons[topic as SupportTopic] ?? CircleHelp;
+  return <Icon aria-hidden="true" />;
+}
+
+function isNavigationActive(pathname: string, href: string) {
+  if (href === "/start") return pathname === "/start" || pathname.startsWith("/pathways/");
+  if (href === "/resources") return pathname === "/resources" || pathname.startsWith("/resources/");
+  return pathname === href;
+}
 
 const formatLabels: Record<AppointmentFormat, string> = {
   phone: "Phone",
@@ -128,16 +157,17 @@ export function UrgentSupportBanner({ full = false }: { full?: boolean }) {
 
 export function AppHeader() {
   const [open, setOpen] = useState(false);
+  const pathname = usePathname() || "/";
   return (
     <>
       <header className="app-header">
         <BrandLogo />
         <nav className="desktop-nav" aria-label="Main navigation">
-          {navigation.map(([label, href]) => <a key={href} href={href}>{label}</a>)}
+          {navigation.map(([label, href]) => <a key={href} href={href} aria-current={isNavigationActive(pathname, href) ? "page" : undefined}>{label}</a>)}
         </nav>
         <div className="header-actions">
           <QuickExit />
-          <a className="button button-black header-book" href="/book">Book a chat</a>
+          <a className="button button-black header-book" href="/book">Talk to someone</a>
           <button className="menu-button" aria-label="Open menu" aria-expanded={open} onClick={() => setOpen(true)}><Menu /></button>
         </div>
       </header>
@@ -147,12 +177,13 @@ export function AppHeader() {
 }
 
 export function MobileNavigation({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const pathname = usePathname() || "/";
   if (!open) return null;
   return (
     <div className="mobile-nav-backdrop" role="presentation" onClick={onClose}>
       <nav className="mobile-nav" aria-label="Mobile navigation" onClick={(event) => event.stopPropagation()}>
         <button aria-label="Close menu" onClick={onClose}><X /></button>
-        {navigation.map(([label, href]) => <a key={href} href={href}>{label}<ChevronRight /></a>)}
+        {navigation.map(([label, href]) => <a key={href} href={href} aria-current={isNavigationActive(pathname, href) ? "page" : undefined}>{label}<ChevronRight /></a>)}
         <a href="/pathways/safe-tonight" className="urgent-link">Need somewhere safe tonight?</a>
         <a href="/account">My account</a>
         <ServiceStatus />
@@ -165,7 +196,7 @@ export function Footer() {
   return (
     <footer className="footer">
       <div className="footer-main">
-        <div><BrandLogo /><p>Take one useful step.<br />Come back when you need the next.</p></div>
+        <div className="footer-brand"><BrandLogo /><p>Take one useful step.<br />Come back when you need the next.</p></div>
         <div><h2>Get help</h2><a href="/start">Choose a first step</a><a href="/book">Book a youth worker</a><a href="/resources">Browse useful options</a><a href="/safety">Urgent support</a></div>
         <div><h2>About</h2><a href="/about">How it works</a><a href="/partners">Partners</a><a href="/impact">Pilot impact</a><a href="/merch">Drop 001</a></div>
         <div><h2>The small print, plainly</h2><a href="/privacy">Privacy</a><a href="/consent">Consent</a><a href="/terms">Terms & service status</a><a href="/demo">Demo mode</a></div>
@@ -186,18 +217,25 @@ export function PathwayCard({ icon, title, copy, href, tone = "cream" }: { icon:
 
 function SourceBadge({ resource }: { resource: Resource }) {
   if (resource.sourceType === "verified_external") return <span className="source-badge verified"><BadgeCheck /> External details checked</span>;
-  if (resource.sourceType === "future_partner") return <span className="source-badge future">Placeholder future partner</span>;
+  if (resource.sourceType === "future_partner") return <span className="source-badge future">Future partner example</span>;
   return <span className="source-badge demo">Demonstration content</span>;
 }
 
 export function ResourceCard({ resource, saved, onSave }: { resource: Resource; saved?: boolean; onSave?: () => void }) {
+  const urgentCallLabels: Record<string, string> = {
+    "victoria-homelessness-support": "Call 1800 825 955",
+    "kids-helpline": "Call Kids Helpline",
+    "1800respect": "Call 1800RESPECT",
+    lifeline: "Call Lifeline",
+  };
+  const urgentCallLabel = resource.sourceType === "verified_external" && resource.phone ? urgentCallLabels[resource.slug] : undefined;
   return (
     <article className="resource-card">
       <div className="resource-meta"><SourceBadge resource={resource} /><span>{resource.category}</span></div>
       <h3><a href={`/resources/${resource.slug}`}>{resource.title}</a></h3>
       <p>{resource.summary}</p>
       <dl className="quick-facts"><div><dt>Cost</dt><dd>{resource.cost}</dd></div><div><dt>Contact</dt><dd>{resource.contact}</dd></div><div><dt>Available</dt><dd>{resource.openingHours}</dd></div></dl>
-      <div className="card-actions"><a className="button button-black" href={`/resources/${resource.slug}`}>What happens next</a>{onSave && <button className="icon-button" onClick={onSave} aria-label={`Save ${resource.title}`}><Save /> {saved ? "Saved" : "Save"}</button>}</div>
+      <div className="card-actions">{urgentCallLabel && <a className="button button-red" href={`tel:${resource.phone}`}><Phone /> {urgentCallLabel}</a>}<a className={`button ${urgentCallLabel ? "button-light" : "button-black"}`} href={`/resources/${resource.slug}`}>View details <ArrowRight /></a>{onSave && <button className="icon-button" onClick={onSave} aria-label={`Save ${resource.title}`}><Bookmark /> {saved ? "Saved" : "Save"}</button>}</div>
       <small>Information checked {format(new Date(`${resource.lastVerifiedAt}T12:00:00`), "d MMMM yyyy")}</small>
     </article>
   );
@@ -238,12 +276,12 @@ function HomePage() {
       <section className="section">
         <div className="section-heading"><div><span className="eyebrow">Pick what feels useful</span><h2>What would make today easier?</h2></div><p>No assessment. No wrong door. Choose one thing.</p></div>
         <div className="pathway-grid">
-          <PathwayCard icon={<House />} title="Somewhere safe" copy="Housing help for tonight or the next few weeks." href="/pathways/safe-tonight" tone="red" />
-          <PathwayCard icon={<MessageCircle />} title="Talk to someone" copy="Book a real youth worker. Phone, video, text or in person." href="/pathways/talk" tone="mint" />
-          <PathwayCard icon={<BriefcaseBusiness />} title="Work" copy="Paid opportunities, résumés and interview support." href="/pathways/work" tone="yellow" />
-          <PathwayCard icon={<GraduationCap />} title="Study or training" copy="TAFE, VCE VM and practical training options." href="/pathways/study" />
-          <PathwayCard icon={<CircleDollarSign />} title="Money" copy="Bills, concessions and financial counselling paths." href="/pathways/money" tone="navy" />
-          <PathwayCard icon={<TrainFront />} title="Food or transport" copy="Useful local help without a long form." href="/pathways/food-transport" />
+          <PathwayCard icon={<SupportTopicIcon topic="Somewhere safe" />} title="Somewhere safe" copy="Housing help for tonight or the next few weeks." href="/pathways/safe-tonight" tone="red" />
+          <PathwayCard icon={<SupportTopicIcon topic="Talk to someone" />} title="Talk to someone" copy="Book a real youth worker. Phone, video, text or in person." href="/pathways/talk" tone="mint" />
+          <PathwayCard icon={<SupportTopicIcon topic="Work" />} title="Work" copy="Paid opportunities, résumés and interview support." href="/pathways/work" tone="yellow" />
+          <PathwayCard icon={<SupportTopicIcon topic="Study or training" />} title="Study or training" copy="TAFE, VCE VM and practical training options." href="/pathways/study" />
+          <PathwayCard icon={<SupportTopicIcon topic="Money" />} title="Money" copy="Bills, concessions and financial counselling paths." href="/pathways/money" tone="navy" />
+          <PathwayCard icon={<SupportTopicIcon topic="Food or transport" />} title="Food or transport" copy="Useful local help without a long form." href="/pathways/food-transport" />
         </div>
         <div className="center-action"><a className="button button-black" href="/start">Not sure? Start with one question</a></div>
       </section>
@@ -256,22 +294,23 @@ function HomePage() {
         <div><span className="eyebrow">A real conversation</span><h2>Talk to a person.<br />Not a bot.</h2><p>Maya and the demonstration worker team offer scheduled 30-minute conversations. Bring one question. Or say you are not sure yet.</p><ul className="check-list"><li><Check /> Phone, video, scheduled text or in person</li><li><Check /> No diagnosis or detailed history required</li><li><Check /> A warm referral only happens with your consent</li></ul><a className="button button-mint" href="/book">Find a time <ArrowRight /></a></div>
       </section>
       <section className="section useful-preview"><div className="section-heading"><div><span className="eyebrow">Bluntly useful</span><h2>Useful now</h2></div><a className="text-link" href="/resources">See every option <ArrowRight /></a></div><div className="resource-grid">{resources.slice(0, 3).map((resource) => <ResourceCard key={resource.id} resource={resource} />)}</div></section>
-      <section className="partner-strip section"><div><span className="eyebrow">Partnership over ego</span><h2>Good services already exist.</h2><p>first_step coordinates the roads between youth workers, education providers, social enterprises and specialist support. Their wins are our wins.</p><a className="button button-light" href="/partners">How partnership works</a></div><img src="/images/fs_img_3.jpg" alt="A group of people placing their hands together" /></section>
-      <section className="section values-section"><div className="section-heading"><div><span className="eyebrow">Our operating rules</span><h2>Useful. Honest. Human.</h2></div></div><div className="values-grid"><article><span>01</span><h3>Dignity without disclosure</h3><p>You do not need to prove things are bad enough.</p></article><article><span>02</span><h3>All work is paid work</h3><p>Productive labour is paid or a lawful, structured placement.</p></article><article><span>03</span><h3>Practicality over performance</h3><p>Do something useful today. Skip the corporate speech.</p></article><article><span>04</span><h3>Small enough to test</h3><p>This is a transparent pilot, not a pretend national service.</p></article></div></section>
-      <section className="section split-promos"><a className="event-promo" href="/demo"><span>Demo pop-up · August 2026</span><h2>See the pilot in action.</h2><p>Try a guided pathway, book a sample time and inspect each role.</p><ArrowRight /></a><a className="merch-promo" href="/merch"><span>Drop 001</span><h2>Wear the first step.</h2><div className="tee-shape"><img src="/brand/first_step_logo-lettermark.svg" alt="" /></div><p>Small-batch demonstration merch. No pretend checkout.</p></a></section>
-      <section className="impact-preview section"><div><span className="eyebrow">Demonstration pilot data</span><h2>Measure the bridge.<br />Protect the person.</h2><p>We count completed steps, not private stories. Sponsors receive aggregate results only.</p><a className="button button-black" href="/impact">See what we measure</a></div><div className="impact-numbers"><ImpactMetric value="68%" label="Pathways completed" /><ImpactMetric value="42%" label="Booking conversion" /><ImpactMetric value="76%" label="Appointments attended" /><ImpactMetric value="61%" label="Referrals accepted" /></div></section>
+      <section className="partner-strip section"><div className="partner-copy"><span className="eyebrow">Partnership over ego</span><h2>Good services already exist.</h2><p>first_step coordinates the roads between youth workers, education providers, social enterprises and specialist support. Their wins are our wins.</p><a className="button button-light" href="/partners">How partnership works</a></div><div className="partner-model" aria-label="How partners contribute"><article><UsersRound /><div><strong>Qualified youth workers</strong><span>Practical conversations and safe connections.</span></div></article><article><GraduationCap /><div><strong>TAFE and VCE VM</strong><span>Real learning and training pathways.</span></div></article><article><BriefcaseBusiness /><div><strong>Social enterprises</strong><span>Paid work and lawful placements.</span></div></article><article><HeartHandshake /><div><strong>Specialist youth services</strong><span>Housing, safety, health and expert support.</span></div></article></div></section>
+      <section className="section values-section"><div className="section-heading"><div><span className="eyebrow">Our operating rules</span><h2>Useful. Honest. Human.</h2></div></div><div className="values-grid"><article><span>01</span><h3>Dignity without disclosure</h3><p>You do not need to prove things are bad enough.</p></article><article><span>02</span><h3>All work is paid work</h3><p>Productive labour is paid or a lawful, structured placement.</p></article><article><span>03</span><h3>Practicality over performance</h3><p>Do something useful today. Skip the corporate speech.</p></article><article><span>04</span><h3>Partnership over ego</h3><p>Existing services keep the credit for the work they do.</p></article><article><span>05</span><h3>Small enough to test</h3><p>This is a transparent pilot, not a pretend national service.</p></article></div></section>
+      <section className="section split-promos"><a className="event-promo" href="/demo"><span>Demo pop-up · August 2026</span><h2>See the pilot in action.</h2><p>Try a guided pathway, book a sample time and inspect each role.</p><ArrowRight /></a><a className="merch-promo" href="/merch"><span>Drop 001</span><h2>Wear the first step.</h2><img src="/brand/MerchMocks/black-tee.png" alt="Black first_step heavyweight t-shirt" /><p>Five small-batch pieces. Register interest, no pretend checkout.</p></a></section>
+      <section className="impact-preview section"><div><span className="eyebrow">Demonstration pilot data</span><h2>Measure the bridge.<br />Protect the person.</h2><p>We count completed steps, not private stories. Sponsors receive aggregate results only.</p><a className="button button-black" href="/impact">See what we measure</a></div><div><p className="impact-demo-note"><strong>Demonstration pilot data.</strong> These figures show how pilot reporting could work; they are not real first_step outcomes.</p><div className="impact-numbers"><ImpactMetric value="68%" label="Pathways completed" /><ImpactMetric value="42%" label="Booking conversion" /><ImpactMetric value="76%" label="Appointments attended" /><ImpactMetric value="61%" label="Referrals accepted" /></div></div></section>
     </>
   );
 }
 
-const pathwayOptions = [
-  ["safe", "I need somewhere safe", <House key="safe" />],
-  ["talk", "I want to talk to someone", <MessageCircle key="talk" />],
-  ["work", "I need help with work or money", <BriefcaseBusiness key="work" />],
-  ["study", "I want to study or train", <GraduationCap key="study" />],
-  ["food", "I need food or transport help", <TrainFront key="food" />],
-  ["resume", "I need résumé or interview help", <BookOpen key="resume" />],
-  ["unsure", "I am not sure yet", <Sparkles key="unsure" />],
+const pathwayOptions: ReadonlyArray<readonly [string, string, SupportTopic]> = [
+  ["safe", "I need somewhere safe", "Housing or somewhere safe"],
+  ["talk", "I want to talk to someone", "Talk to someone"],
+  ["work", "I need help with work or money", "Work"],
+  ["study", "I want to study or train", "Study or training"],
+  ["food", "I need food or transport help", "Food or transport"],
+  ["resume", "I need résumé or interview help", "Resume or interviews"],
+  ["unsure", "I am not sure yet", "I am not sure"],
+  ["other", "Something else", "Something else"],
 ] as const;
 
 function GuidedPathway({ state }: { state: DemoState }) {
@@ -297,18 +336,18 @@ function GuidedPathway({ state }: { state: DemoState }) {
     <div className="task-page">
       <PageIntro eyebrow="Choose a direction" title="What would make today a little easier?" copy="Pick the closest option. This is not an assessment, and you can change your mind." />
       {step !== 99 && <div className="progress-bar" role="progressbar" aria-label="Guided pathway progress" aria-valuemin={1} aria-valuemax={3} aria-valuenow={Math.min(step, 3)}><span style={{ width: `${(Math.min(step, 3) / 3) * 100}%` }} /></div>}
-      {step === 1 && <div className="choice-grid">{pathwayOptions.map(([value, label, icon]) => <button disabled={!progressLoaded} key={value} onClick={() => choose(value)}>{icon}<span>{label}</span><ChevronRight /></button>)}</div>}
+      {step === 1 && <div className="choice-grid">{pathwayOptions.map(([value, label, topic]) => <button disabled={!progressLoaded} key={value} onClick={() => choose(value)}><SupportTopicIcon topic={topic} /><span>{label}</span><ChevronRight /></button>)}</div>}
       {step === 99 && <><UrgentSupportBanner full /><div className="urgent-resource-grid">{urgentResources.map((resource) => <ResourceCard key={resource.id} resource={resource} />)}</div><div className="flow-actions"><button className="button button-light" onClick={restart}>Start again</button><a className="button button-black" href="/resources">Keep browsing</a></div></>}
       {step === 2 && <div className="question-card"><button className="back-button" onClick={() => setStep(1)}><ChevronLeft /> Back</button><span className="eyebrow">One more choice</span><h2>Would you rather see options now or talk to someone?</h2><div className="two-choice"><button onClick={() => { setMode("options"); setStep(3); }}><Eye /><strong>Show me options</strong><span>Browse without giving contact details.</span></button><button onClick={() => { setMode("talk"); setStep(3); }}><MessageCircle /><strong>Talk to someone</strong><span>Find a scheduled 30-minute appointment.</span></button></div></div>}
       {step === 3 && <div className="question-card"><button className="back-button" onClick={() => setStep(2)}><ChevronLeft /> Back</button><span className="eyebrow">Last choice</span><h2>What format would be easiest?</h2><div className="format-pills">{["Any format", "Online", "Phone", "In person"].map((item) => <button className={formatPreference === item ? "selected" : ""} key={item} onClick={() => setFormatPreference(item)}>{item}</button>)}</div><button className="button button-black" onClick={() => setStep(4)}>Show my next step <ArrowRight /></button></div>}
-      {step === 4 && <section className="results-screen" aria-live="polite"><span className="eyebrow">Your strongest next step</span><div className="strong-result"><div><SourceBadge resource={results[0]} /><h2>{results[0]?.title}</h2><p>{results[0]?.summary}</p><a className="button button-mint" href={mode === "talk" ? `/book?topic=${selection}` : `/resources/${results[0]?.slug}`}>{mode === "talk" ? "Book a real conversation" : "See what happens next"} <ArrowRight /></a></div><img src="/brand/first_step_mascot.svg" alt="" /></div><h3>Other useful options</h3><div className="resource-grid compact">{results.slice(1).map((resource) => <ResourceCard key={resource.id} resource={resource} saved={state.savedResources.includes(resource.slug)} onSave={() => demoRepository.saveResource(resource.slug)} />)}</div><div className="flow-actions"><button className="button button-light" onClick={save}><Save /> Save these steps</button><button className="button button-light" onClick={() => window.print()}><FileDown /> Print or share</button><button className="text-link" onClick={restart}>Start again</button></div></section>}
+      {step === 4 && <section className="results-screen" aria-live="polite"><span className="eyebrow">Your strongest next step</span><div className="strong-result"><div><SourceBadge resource={results[0]} /><h2>{results[0]?.title}</h2><p>{results[0]?.summary}</p><a className="button button-mint" href={mode === "talk" ? `/book?topic=${selection}` : `/resources/${results[0]?.slug}`}>{mode === "talk" ? "Talk to someone" : "See what happens next"} <ArrowRight /></a></div><img src="/brand/first_step_mascot.svg" alt="" /></div><h3>Other useful options</h3><div className="resource-grid compact">{results.slice(1).map((resource) => <ResourceCard key={resource.id} resource={resource} saved={state.savedResources.includes(resource.slug)} onSave={() => demoRepository.saveResource(resource.slug)} />)}</div><div className="flow-actions"><button className="button button-light" onClick={save}><Bookmark /> Save these steps</button><button className="button button-light" onClick={() => window.print()}><FileDown /> Print or share</button><button className="text-link" onClick={restart}>Start again</button></div></section>}
     </div>
   );
 }
 
 export function BookingStepper({ step }: { step: number }) {
   const labels = ["Topic", "Format", "Worker", "Time", "Details", "Done"];
-  return <ol className="booking-stepper" aria-label="Booking progress">{labels.map((label, index) => <li key={label} className={step >= index + 1 ? "active" : ""}><span>{step > index + 1 ? <Check /> : index + 1}</span><small>{label}</small></li>)}</ol>;
+  return <><div className="booking-mobile-progress" role="status"><strong>Step {step} of 6</strong><span>{labels[step - 1]}</span><div aria-hidden="true"><i style={{ width: `${(step / 6) * 100}%` }} /></div></div><ol className="booking-stepper" aria-label="Booking progress">{labels.map((label, index) => <li key={label} className={step >= index + 1 ? "active" : ""} aria-current={step === index + 1 ? "step" : undefined}><span>{step > index + 1 ? <Check /> : index + 1}</span><small>{label}</small></li>)}</ol></>;
 }
 
 export function WorkerCard({ worker, selected, onSelect }: { worker: typeof workers[number]; selected: boolean; onSelect: () => void }) {
@@ -384,10 +423,10 @@ function BookingPage({ state }: { state: DemoState }) {
   };
   return (
     <div className="task-page booking-page">
-      <PageIntro eyebrow="Book a real person" title="Let’s find a time that works." copy="A 30-minute conversation. No detailed history required. This service is not monitored 24/7." />
+      <PageIntro eyebrow="Book a real conversation" title="Let’s find a time that works." copy="A 30-minute conversation. No detailed history required. This service is not monitored 24/7." />
       <BookingStepper step={step} />
       {error && <ErrorState>{error}</ErrorState>}
-      {step === 1 && <section className="booking-panel"><h2>What would you like to talk about?</h2><p>Choose as many broad topics as you need.</p><div className="check-choice-grid">{(["Housing or somewhere safe", "Work", "Money", "Study or training", "Food or transport", "Resume or interviews", "I am not sure"] as Topic[]).map((topic) => <label key={topic} className={topics.includes(topic) ? "selected" : ""}><input type="checkbox" checked={topics.includes(topic)} onChange={() => toggleTopic(topic)} /><span>{topic}</span><Check /></label>)}</div><FlowButtons step={step} next={next} /></section>}
+      {step === 1 && <section className="booking-panel"><fieldset className="topic-fieldset"><legend>What would you like to talk about?</legend><p>Choose as many broad topics as you need.</p><div className="check-choice-grid">{TOPICS.map((topic) => <label key={topic} className={topics.includes(topic) ? "selected" : ""}><input type="checkbox" checked={topics.includes(topic)} onChange={() => toggleTopic(topic)} /><span className="topic-choice-icon"><SupportTopicIcon topic={topic} /></span><span>{topic}</span><Check aria-hidden="true" /></label>)}</div><p className="selection-status" aria-live="polite">{topics.length ? `${topics.length} topic${topics.length === 1 ? "" : "s"} selected` : "No topics selected yet"}</p></fieldset><FlowButtons step={step} next={next} /></section>}
       {step === 2 && <section className="booking-panel"><h2>How would you like to talk?</h2><div className="format-choice-grid">{([{ id: "phone", icon: <Phone />, copy: "We call your safe number at the booked time." }, { id: "video", icon: <Video />, copy: "A private link is sent before the appointment." }, { id: "text", icon: <MessageCircle />, copy: "A secure thread opens shortly before your time." }, { id: "in-person", icon: <MapPin />, copy: "Meet at a listed pilot location." }] as const).map((item) => <button key={item.id} className={appointmentFormat === item.id ? "selected" : ""} onClick={() => setAppointmentFormat(item.id)}>{item.icon}<strong>{formatLabels[item.id]}</strong><span>{item.copy}</span>{appointmentFormat === item.id && <CheckCircle2 />}</button>)}</div>{appointmentFormat === "text" && <p className="inline-note"><Clock3 /> Scheduled chat is with a real worker, not a bot. It is checked only during response hours.</p>}<FlowButtons step={step} next={next} back={() => setStep(1)} /></section>}
       {step === 3 && <section className="booking-panel"><h2>Choose a worker — or first available.</h2><button className={`first-available ${workerId === "first-available" ? "selected" : ""}`} onClick={() => setWorkerId("first-available")}><UsersRound /><div><strong>First available</strong><span>Usually the quickest option. We match by topic and format.</span></div>{workerId === "first-available" && <CheckCircle2 />}</button><div className="worker-list">{workers.filter((worker) => worker.formats.includes(appointmentFormat)).map((worker) => <WorkerCard key={worker.id} worker={worker} selected={workerId === worker.id} onSelect={() => setWorkerId(worker.id)} />)}</div><FlowButtons step={step} next={next} back={() => setStep(2)} /></section>}
       {step === 4 && <section className="booking-panel"><h2>Choose a date and time.</h2><p>Times are in Australia/Melbourne. Slots include a 15-minute worker buffer.</p><AppointmentCalendar slots={availableSlots} selected={slot} onSelect={setSlot} /><FlowButtons step={step} next={next} back={() => setStep(3)} /></section>}
@@ -401,23 +440,26 @@ function FlowButtons({ step, next, back, submit = false }: { step: number; next:
   return <div className="flow-actions">{back && <button type="button" className="button button-light" onClick={back}><ChevronLeft /> Back</button>}<button type={submit ? "submit" : "button"} className="button button-black" onClick={submit ? undefined : next}>{submit ? "Book this appointment" : step === 4 ? "Use this time" : "Continue"} <ArrowRight /></button></div>;
 }
 
-export function ResourceFilters({ category, setCategory, formatFilter, setFormatFilter, search, setSearch }: { category: string; setCategory: (value: string) => void; formatFilter: string; setFormatFilter: (value: string) => void; search: string; setSearch: (value: string) => void }) {
+export function ResourceFilters({ category, setCategory, formatFilter, setFormatFilter, search, setSearch, noReferral, setNoReferral, clearFilters }: { category: string; setCategory: (value: string) => void; formatFilter: string; setFormatFilter: (value: string) => void; search: string; setSearch: (value: string) => void; noReferral: boolean; setNoReferral: (value: boolean) => void; clearFilters: () => void }) {
   const categories = ["All topics", ...Array.from(new Set(resources.map((resource) => resource.category)))];
-  return <aside className="resource-filters"><div className="search-box"><Search /><label><span>Search useful options</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Try work, food or TAFE" /></label></div><div className="filter-row"><label><span>Topic</span><select value={category} onChange={(event) => setCategory(event.target.value)}>{categories.map((item) => <option key={item}>{item}</option>)}</select></label><label><span>Format</span><select value={formatFilter} onChange={(event) => setFormatFilter(event.target.value)}><option>Any format</option><option>online</option><option>phone</option><option>in-person</option></select></label><label className="checkbox-filter"><input type="checkbox" /> No referral required</label><button className="filter-button"><SlidersHorizontal /> More filters</button></div></aside>;
+  const active = Boolean(search || category !== "All topics" || formatFilter !== "Any format" || noReferral);
+  return <aside className="resource-filters" aria-label="Resource filters"><div className="search-box"><Search /><label><span>Search</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by service or need" /></label></div><details className="filter-disclosure" open><summary><SlidersHorizontal /> Topic and format filters</summary><div className="filter-row"><label><span>Topic</span><span className="select-wrap"><select value={category} onChange={(event) => setCategory(event.target.value)}>{categories.map((item) => <option key={item}>{item}</option>)}</select><ChevronDown aria-hidden="true" /></span></label><label><span>Format</span><span className="select-wrap"><select value={formatFilter} onChange={(event) => setFormatFilter(event.target.value)}><option>Any format</option><option>online</option><option>phone</option><option>in-person</option></select><ChevronDown aria-hidden="true" /></span></label><label className="checkbox-filter"><input type="checkbox" checked={noReferral} onChange={(event) => setNoReferral(event.target.checked)} /> No referral required</label>{active && <button type="button" className="clear-filters" onClick={clearFilters}>Clear filters</button>}</div></details></aside>;
 }
 
 function ResourcesPage({ state }: { state: DemoState }) {
   const [category, setCategory] = useState("All topics");
   const [formatFilter, setFormatFilter] = useState("Any format");
   const [search, setSearch] = useState("");
-  const filtered = resources.filter((resource) => resource.status !== "archived" && (category === "All topics" || resource.category === category) && (formatFilter === "Any format" || resource.formats.includes(formatFilter as "online")) && `${resource.title} ${resource.summary} ${resource.category}`.toLowerCase().includes(search.toLowerCase()));
-  return <div className="task-page wide"><PageIntro eyebrow="Useful now" title="Know what happens next." copy="Not a dead directory. Every option explains the cost, contact, hours and what you may need." /><div className="source-key"><SourceBadge resource={resources[0]} /><span>Live external details</span><SourceBadge resource={resources[4]} /><span>Pilot content to test</span></div><ResourceFilters category={category} setCategory={setCategory} formatFilter={formatFilter} setFormatFilter={setFormatFilter} search={search} setSearch={setSearch} /><p className="results-count" aria-live="polite">{filtered.length} useful option{filtered.length === 1 ? "" : "s"}</p><div className="resource-grid">{filtered.map((resource) => <ResourceCard key={resource.id} resource={resource} saved={state.savedResources.includes(resource.slug)} onSave={() => demoRepository.saveResource(resource.slug)} />)}</div>{!filtered.length && <EmptyState title="Nothing matches those filters.">Clear a filter or try one broad word.</EmptyState>}</div>;
+  const [noReferral, setNoReferral] = useState(false);
+  const filtered = resources.filter((resource) => resource.status !== "archived" && (category === "All topics" || resource.category === category) && (formatFilter === "Any format" || resource.formats.includes(formatFilter as "online")) && (!noReferral || resource.noReferral) && `${resource.title} ${resource.summary} ${resource.category}`.toLowerCase().includes(search.toLowerCase()));
+  const clearFilters = () => { setCategory("All topics"); setFormatFilter("Any format"); setSearch(""); setNoReferral(false); };
+  return <div className="task-page wide"><PageIntro eyebrow="Useful now" title="Know what happens next." copy="Not a dead directory. Every option explains the cost, contact, hours and what you may need." /><div className="source-key"><span><SourceBadge resource={resources[0]} /> Current external information</span><span><SourceBadge resource={resources[4]} /> Seeded pilot pathway</span><span><SourceBadge resource={resources[5]} /> Illustrative future service</span></div><ResourceFilters category={category} setCategory={setCategory} formatFilter={formatFilter} setFormatFilter={setFormatFilter} search={search} setSearch={setSearch} noReferral={noReferral} setNoReferral={setNoReferral} clearFilters={clearFilters} /><p className="results-count" aria-live="polite">Showing {filtered.length} useful option{filtered.length === 1 ? "" : "s"}</p><div className="resource-grid">{filtered.map((resource) => <ResourceCard key={resource.id} resource={resource} saved={state.savedResources.includes(resource.slug)} onSave={() => demoRepository.saveResource(resource.slug)} />)}</div>{!filtered.length && <EmptyState title="Nothing matches those filters.">Try a broader search or clear every filter.<br /><button type="button" className="button button-light" onClick={clearFilters}>Clear filters</button></EmptyState>}</div>;
 }
 
 function ResourceDetail({ slug, state }: { slug: string; state: DemoState }) {
   const resource = resources.find((item) => item.slug === slug);
   if (!resource) return <NotFound />;
-  return <div className="task-page resource-detail"><a className="back-button" href="/resources"><ChevronLeft /> All useful options</a><SourceBadge resource={resource} /><h1>{resource.title}</h1><p className="lead">{resource.summary}</p><div className="detail-layout"><article><h2>What it helps with</h2><p>{resource.description}</p><h2>What happens next</h2><p>{resource.nextStep}</p><h2>What you may need</h2><p>{resource.noReferral ? "No first_step referral is required. The external service may ask only for details needed to respond." : "A worker can check fit first. Nothing is shared with a partner until you consent."}</p>{resource.sourceType !== "verified_external" && <div className="demo-content-warning"><AlertTriangle /><p><strong>This is demonstration pilot content.</strong> Confirm current details with a qualified worker or the relevant provider before relying on it.</p></div>}</article><aside className="detail-facts"><dl><div><dt>Cost</dt><dd>{resource.cost}</dd></div><div><dt>Contact</dt><dd>{resource.contact}</dd></div><div><dt>Formats</dt><dd>{resource.formats.join(", ")}</dd></div><div><dt>Age</dt><dd>{resource.age}</dd></div><div><dt>Location</dt><dd>{resource.location}</dd></div><div><dt>Hours</dt><dd>{resource.openingHours}</dd></div><div><dt>Last checked</dt><dd>{format(new Date(`${resource.lastVerifiedAt}T12:00:00`), "d MMMM yyyy")}</dd></div></dl>{resource.phone && <a className="button button-red" href={`tel:${resource.phone}`}><Phone /> Call {resource.phone}</a>}{resource.website && <a className="button button-black" href={resource.website} target="_blank" rel="noreferrer">Official website <ExternalLink /></a>}<button className="button button-light" onClick={() => demoRepository.saveResource(resource.slug)}><Save /> {state.savedResources.includes(resource.slug) ? "Saved" : "Save for later"}</button></aside></div><MascotPrompt><strong>Want help checking fit?</strong><p>A worker can talk through the option without making a referral.</p><a href="/book">Book a conversation</a></MascotPrompt></div>;
+  return <div className="task-page resource-detail"><a className="back-button" href="/resources"><ChevronLeft /> All useful options</a><SourceBadge resource={resource} /><h1>{resource.title}</h1><p className="lead">{resource.summary}</p><div className="detail-layout"><article><h2>What it helps with</h2><p>{resource.description}</p><h2>What happens next</h2><p>{resource.nextStep}</p><h2>What you may need</h2><p>{resource.noReferral ? "No first_step referral is required. The external service may ask only for details needed to respond." : "A worker can check fit first. Nothing is shared with a partner until you consent."}</p>{resource.sourceType !== "verified_external" && <div className="demo-content-warning"><AlertTriangle /><p><strong>This is demonstration pilot content.</strong> Confirm current details with a qualified worker or the relevant provider before relying on it.</p></div>}</article><aside className="detail-facts"><dl><div><dt>Cost</dt><dd>{resource.cost}</dd></div><div><dt>Contact</dt><dd>{resource.contact}</dd></div><div><dt>Formats</dt><dd>{resource.formats.join(", ")}</dd></div><div><dt>Age</dt><dd>{resource.age}</dd></div><div><dt>Location</dt><dd>{resource.location}</dd></div><div><dt>Hours</dt><dd>{resource.openingHours}</dd></div><div><dt>Last checked</dt><dd>{format(new Date(`${resource.lastVerifiedAt}T12:00:00`), "d MMMM yyyy")}</dd></div></dl>{resource.phone && <a className="button button-red" href={`tel:${resource.phone}`}><Phone /> Call {resource.phone}</a>}{resource.website && <a className="button button-black" href={resource.website} target="_blank" rel="noreferrer">Official website <ExternalLink /></a>}<button className="button button-light" onClick={() => demoRepository.saveResource(resource.slug)}><Bookmark /> {state.savedResources.includes(resource.slug) ? "Saved" : "Save for later"}</button></aside></div><MascotPrompt><strong>Want help checking fit?</strong><p>A worker can talk through the option without making a referral.</p><a href="/book">Talk to someone</a></MascotPrompt></div>;
 }
 
 const pathwayCopy: Record<string, { title: string; copy: string; icon: ReactNode; category: string }> = {
@@ -436,19 +478,19 @@ function PathwayPage({ type }: { type: string }) {
 }
 
 function SafeTonight() {
-  return <div className="task-page"><PageIntro eyebrow="Urgent housing and safety" title="Need somewhere safe tonight?" copy="Skip the questions. These external services are available now. first_step appointments are not emergency support." /><UrgentSupportBanner full /><div className="urgent-calls"><a href="tel:000"><strong>Immediate danger</strong><span>Call 000</span><Phone /></a><a href="tel:1800825955"><strong>Victoria homelessness support</strong><span>1800 825 955 · 24 hours</span><Phone /></a><a href="tel:1800551800"><strong>Kids Helpline · ages 5–25</strong><span>1800 55 1800 · 24/7</span><Phone /></a><a href="tel:1800737732"><strong>1800RESPECT</strong><span>1800 737 732 · text 0458 737 732</span><Phone /></a><a href="tel:131114"><strong>Lifeline</strong><span>13 11 14 · 24/7</span><Phone /></a></div><div className="boundary-box"><ShieldCheck /><div><h2>These services are external.</h2><p>first_step does not operate them. We list them because they may help sooner than a scheduled appointment.</p></div></div><div className="flow-actions"><a className="button button-light" href="/resources">Continue browsing</a><a className="button button-black" href="/book">Book a later conversation</a></div></div>;
+  return <div className="task-page"><PageIntro eyebrow="Urgent housing and safety" title="Need somewhere safe tonight?" copy="Skip the questions. These external services are available now. first_step appointments are not emergency support." /><UrgentSupportBanner full /><div className="urgent-calls"><a href="tel:000"><strong>Immediate danger</strong><span>Call 000</span><Phone /></a><a href="tel:1800825955"><strong>Victoria homelessness support</strong><span>1800 825 955 · 24 hours</span><Phone /></a><a href="tel:1800551800"><strong>Kids Helpline · ages 5–25</strong><span>1800 55 1800 · 24/7</span><Phone /></a><a href="tel:1800737732"><strong>1800RESPECT</strong><span>1800 737 732 · text 0458 737 732</span><Phone /></a><a href="tel:131114"><strong>Lifeline</strong><span>13 11 14 · 24/7</span><Phone /></a></div><div className="boundary-box"><ShieldCheck /><div><h2>These services are external.</h2><p>first_step does not operate them. We list them because they may help sooner than a scheduled appointment.</p></div></div><div className="flow-actions"><a className="button button-light" href="/resources">Continue browsing</a><a className="button button-black" href="/book">Talk to someone</a></div></div>;
 }
 
 function StaticPage({ type }: { type: string }) {
   const pages: Record<string, { eyebrow: string; title: string; copy: string; content: ReactNode }> = {
-    about: { eyebrow: "About first_step", title: "Build the bridge. Back the person.", copy: "first_step makes the first step easier for young people facing housing instability, homelessness risk or barriers to financial stability.", content: <><h2>We sit earlier.</h2><p>We are not trying to replace housing services, TAFE, social enterprises or youth workers. We build a bridge that helps young people reach them.</p><div className="principle-list">{["Dignity without disclosure", "All work is paid work", "Practicality over performance", "Partnership over ego", "Small enough to test"].map((item, index) => <div key={item}><span>0{index + 1}</span><h3>{item}</h3></div>)}</div><h2>Clear operating boundaries</h2><p>first_step is not emergency support, clinical care, legal advice, financial advice or housing provision. Qualified people and established organisations deliver those services.</p></> },
+    about: { eyebrow: "About first_step", title: "Build the bridge. Back the person.", copy: "first_step makes the first step easier for young people facing housing instability, homelessness risk or barriers to financial stability.", content: <div className="about-composition"><div><h2>We sit earlier.</h2><p>We are not trying to replace housing services, TAFE, social enterprises or youth workers. We build a bridge that helps young people reach them.</p><div className="principle-list">{["Dignity without disclosure", "All work is paid work", "Practicality over performance", "Partnership over ego", "Small enough to test"].map((item, index) => <div key={item}><span>0{index + 1}</span><h3>{item}</h3></div>)}</div></div><aside className="about-boundaries"><img src="/brand/first_step_mascot.svg" alt="" /><div className="about-do-dont"><section><h2>What we do</h2><ul><li><Check /> Make the first step easier</li><li><Check /> Connect young people to qualified workers</li><li><Check /> Explain what happens next</li><li><Check /> Support consent-led warm referrals</li></ul></section><section><h2>What we do not do</h2><ul><li><X /> Provide emergency accommodation</li><li><X /> Replace specialist services</li><li><X /> Demand a full personal history</li><li><X /> Share participant information with sponsors</li></ul></section></div><div className="clear-boundary-callout"><ShieldCheck /><div><h2>Clear operating boundaries</h2><p>first_step is not emergency support, clinical care, legal advice, financial advice or housing provision. Qualified people and established organisations deliver those services.</p></div></div></aside></div> },
     privacy: { eyebrow: "Plain-language privacy", title: "Collect less. Explain it clearly.", copy: "This is pilot policy copy for review, not final legal advice.", content: <><h2>What we collect</h2><p>For a booking: the name you use, age band, broad topics, safe contact details, accessibility needs you choose to share and the appointment time.</p><h2>Who can see it</h2><p>Your assigned worker and authorised pilot administrators. A referral partner sees only fields you approve. Sponsors never see participant-level data.</p><h2>What we do not use</h2><p>No advertising pixels, behavioural advertising, session replay or unrestricted sensitive notes.</p><h2>Your choices</h2><p>You can ask for your data, correct it, withdraw referral consent or request account deletion. Production retention periods require legal, privacy and safeguarding review.</p><a className="button button-black" href="/account">Open account choices</a></> },
     consent: { eyebrow: "Consent, plainly", title: "Nothing about you, without you.", copy: "Booking consent and referral consent are separate choices.", content: <><h2>Booking consent</h2><p>You agree to first_step using the minimum details needed to arrange and run a conversation.</p><h2>Referral consent</h2><p>Before a warm referral, you see the partner, what they do, every field proposed for sharing and what may happen next. You can say no.</p><h2>Withdraw consent</h2><p>Tell your worker or use the account request. Withdrawal cannot undo information already lawfully sent, but it stops future sharing where possible.</p></> },
     terms: { eyebrow: "Service status and terms", title: "A pilot, described honestly.", copy: "first_step is a demonstration pilot platform. It is not yet a commissioned live youth-work service.", content: <><h2>Use of this demonstration</h2><p>Sample bookings and dashboards are stored on this device. Do not enter real sensitive information.</p><h2>Information limits</h2><p>External crisis details are separated from demonstration partner and pathway content. Check current details with the relevant service.</p><h2>No emergency monitoring</h2><p>first_step messages and appointments are not monitored continuously. Call 000 in immediate danger.</p></> },
     safety: { eyebrow: "Safety and urgent help", title: "Know the boundary. Get faster help.", copy: "first_step appointments are scheduled. They are not emergency or 24-hour crisis support.", content: <><SafeTonight /></> },
   };
   const page = pages[type] ?? pages.about;
-  return <div className="task-page static-page"><PageIntro eyebrow={page.eyebrow} title={page.title} copy={page.copy} /><article className="prose">{page.content}</article></div>;
+  return <div className="task-page static-page"><PageIntro eyebrow={page.eyebrow} title={page.title} copy={page.copy} /><article className={`prose ${type === "about" ? "about-prose" : ""}`}>{page.content}</article></div>;
 }
 
 export function SponsorBoundaryNotice() {
@@ -467,10 +509,16 @@ function ImpactPage({ admin = false }: { admin?: boolean }) {
 }
 
 function MerchPage() {
-  const [email, setEmail] = useState(""); const [size, setSize] = useState("M"); const [joined, setJoined] = useState(false);
+  const [email, setEmail] = useState(""); const [size, setSize] = useState("M"); const [interest, setInterest] = useState("Black heavyweight tee"); const [joined, setJoined] = useState(false);
   const submit = (event: FormEvent) => { event.preventDefault(); if (/^\S+@\S+\.\S+$/.test(email)) { demoRepository.joinMerchWaitlist(email); setJoined(true); } };
-  const products = [["Heavyweight tee", "$55 indicative", "tee"], ["five-panel cap", "$38 indicative", "cap"], ["daily carry tote", "$28 indicative", "tote"], ["sticker pack", "$8 indicative", "stickers"]];
-  return <div className="merch-page"><section className="merch-hero"><div><span>first_step · Drop 001</span><h1>Wear the<br /><em>first step.</em></h1><p>Small-batch demonstration merch supporting visibility and a modest future trading stream. The service always comes first.</p><a className="button button-mint" href="#waitlist">Join the drop list</a></div><div className="merch-hero-product"><div className="big-tee"><img src="/brand/first_step_logo.svg" alt="first_step logo on a black t-shirt mock-up" /></div></div></section><section className="product-grid section">{products.map(([name, price, type]) => <article key={name}><div className={`product-art ${type}`}><img src={type === "stickers" ? "/brand/first_step_mascot.svg" : "/brand/first_step_logo-lettermark.svg"} alt="" /></div><span>Demonstration product</span><h2>first_step {name}</h2><p>{price}</p></article>)}</section><section className="waitlist-section" id="waitlist"><div><span className="eyebrow">No pretend checkout</span><h2>Tell us what you would wear.</h2><p>Joining records interest only. It does not place an order or take payment.</p></div>{joined ? <div className="success-box"><CheckCircle2 /><h3>You are on the demo list.</h3><p>No email was sent in demo mode.</p></div> : <form onSubmit={submit}><label><span>Size or interest</span><select value={size} onChange={(event) => setSize(event.target.value)}><option>XS</option><option>S</option><option>M</option><option>L</option><option>XL</option><option>Accessories only</option></select></label><label><span>Email</span><input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} /></label><button className="button button-black">Join waitlist</button></form>}</section><SponsorBoundaryNotice /></div>;
+  const products = [
+    { name: "Black heavyweight tee", price: "$55 indicative", image: "/brand/MerchMocks/black-tee.png", alt: "Front and back view of the black first_step heavyweight t-shirt", note: "Heavy cotton · relaxed fit", sizes: "XS–2XL" },
+    { name: "Cream heavyweight tee", price: "$55 indicative", image: "/brand/MerchMocks/white-tee.png", alt: "Front and back view of the cream first_step heavyweight t-shirt", note: "Heavy cotton · relaxed fit", sizes: "XS–2XL" },
+    { name: "Community rally jacket", price: "$145 indicative", image: "/brand/MerchMocks/jacket.png", alt: "Front and back view of the black, cream, mint and red first_step community rally jacket", note: "Limited pilot piece · sponsor patches shown as mock-ups", sizes: "S–2XL", featured: true },
+    { name: "Mascot beanie", price: "$38 indicative", image: "/brand/MerchMocks/beanie.png", alt: "Black rib-knit first_step beanie with mascot patch", note: "Rib knit · fold-up cuff", sizes: "One size" },
+    { name: "Next-step socks", price: "$22 indicative", image: "/brand/MerchMocks/socks.png", alt: "White first_step socks with yellow toes, mint arrows and red mascots", note: "Cushioned crew sock", sizes: "S/M · L/XL" },
+  ];
+  return <div className="merch-page"><section className="merch-hero"><div><span className="eyebrow light">first_step · Drop 001</span><h1>Wear the<br /><em>first step.</em></h1><p>Five small-batch demonstration pieces designed to make the project visible and test a modest future trading stream. Support always comes first.</p><a className="button button-mint" href="#store">See the drop <ArrowRight /></a></div><div className="merch-hero-product"><img src="/brand/MerchMocks/black-tee.png" alt="Black first_step heavyweight t-shirt, shown front and back" /></div></section><section className="section merch-store" id="store"><div className="section-heading"><div><span className="eyebrow">The first drop</span><h2>Five useful things.<br />Zero checkout theatre.</h2></div><p>Indicative pricing helps test demand. Registering interest does not place an order or take payment.</p></div><div className="product-grid">{products.map((product, index) => <article key={product.name} className={product.featured ? "featured" : ""}><div className="product-art"><img src={product.image} alt={product.alt} /></div><div className="product-details"><span>0{index + 1} · Demonstration product</span><h3>{product.name}</h3><p>{product.note}</p><div className="product-meta"><strong>{product.price}</strong><span>{product.sizes}</span></div><a className="button button-light" href="#waitlist" onClick={() => setInterest(product.name)}>Register interest <ArrowRight /></a></div></article>)}</div></section><section className="waitlist-section" id="waitlist"><div><span className="eyebrow">No pretend checkout</span><h2>Tell us what you would wear.</h2><p>Joining records interest only. It does not place an order or take payment.</p><p className="selected-interest"><strong>Selected:</strong> {interest}</p></div>{joined ? <div className="success-box" role="status"><CheckCircle2 /><h3>You are on the demo list.</h3><p>No email was sent and no order was placed in demo mode.</p></div> : <form onSubmit={submit}><label><span>Item</span><select value={interest} onChange={(event) => setInterest(event.target.value)}>{products.map((product) => <option key={product.name}>{product.name}</option>)}</select></label><label><span>Size or interest</span><select value={size} onChange={(event) => setSize(event.target.value)}><option>XS</option><option>S</option><option>M</option><option>L</option><option>XL</option><option>2XL</option><option>Accessories only</option></select></label><label><span>Email</span><input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" placeholder="you@example.com" /></label><button className="button button-black">Join the drop list</button></form>}</section><SponsorBoundaryNotice /></div>;
 }
 
 function DemoPage({ state, hydrated }: { state: DemoState; hydrated: boolean }) {
@@ -491,12 +539,13 @@ function ParticipantPage({ section, state }: { section: string; state: DemoState
   if (section === "appointments") return <ParticipantAppointments state={state} />;
   if (section === "pathways") return <div className="dashboard-page"><DashboardNav role="participant" /><main><PageIntro eyebrow="Saved next steps" title="Come back when you need the next." copy="Saved on this device in demo mode." />{state.savedPathways.length ? <div className="saved-list">{state.savedPathways.map((item) => <article key={item}><Sparkles /><div><h3>Your saved first step</h3><p>{item.replace("-", " · ")}</p></div><a href="/start">Open</a></article>)}</div> : <EmptyState title="You have not saved anything yet.">Start with what would make today easier.<br /><a href="/start">Choose a first step</a></EmptyState>}</main></div>;
   if (section === "referrals") return <ParticipantReferrals state={state} />;
-  return <div className="dashboard-page"><DashboardNav role="participant" /><main><div className="dashboard-welcome"><span className="eyebrow">Participant demo</span><h1>Hey Jamie. What feels useful?</h1><p>Your dashboard shows only your next steps, appointments and consent choices.</p></div><div className="dashboard-grid"><article className="dashboard-feature"><span>Next appointment</span>{state.appointments.filter((item) => !item.status.startsWith("cancelled")).length ? <AppointmentSummary appointment={state.appointments.find((item) => !item.status.startsWith("cancelled"))!} /> : <EmptyState title="No appointment booked.">Talk through one question with a youth worker.</EmptyState>}<a className="button button-black" href="/book">Book a conversation</a></article><article><span>Saved resources</span><strong>{state.savedResources.length}</strong><p>Useful options kept for later.</p><a href="/resources">Browse resources</a></article><article><span>Referrals</span><strong>{state.referrals.filter((item) => item.status === "offered").length}</strong><p>Waiting for your choice.</p><a href="/account/referrals">Review consent</a></article></div><section className="account-privacy"><ShieldCheck /><div><h2>Your information. Your choices.</h2><p>Request a copy, correct details or ask for deletion. In demo mode, clearing site data removes local records.</p><button className="button button-light" onClick={() => alert("Demo request recorded. No data was sent.")}>Request my data</button><button className="button button-light" onClick={() => alert("Demo deletion request recorded. No live account exists.")}>Request account deletion</button></div></section></main></div>;
+  return <div className="dashboard-page"><DashboardNav role="participant" /><main><div className="dashboard-welcome"><span className="eyebrow">Participant demo</span><h1>Hey Jamie. What feels useful?</h1><p>Your dashboard shows only your next steps, appointments and consent choices.</p></div><div className="dashboard-grid"><article className="dashboard-feature"><span>Next appointment</span>{state.appointments.filter((item) => !item.status.startsWith("cancelled")).length ? <AppointmentSummary appointment={state.appointments.find((item) => !item.status.startsWith("cancelled"))!} /> : <EmptyState title="No appointment booked.">Talk through one question with a youth worker.</EmptyState>}<a className="button button-black" href="/book">Talk to someone</a></article><article><span>Saved resources</span><strong>{state.savedResources.length}</strong><p>Useful options kept for later.</p><a href="/resources">Browse resources</a></article><article><span>Referrals</span><strong>{state.referrals.filter((item) => item.status === "offered").length}</strong><p>Waiting for your choice.</p><a href="/account/referrals">Review consent</a></article></div><section className="account-privacy"><ShieldCheck /><div><h2>Your information. Your choices.</h2><p>Request a copy, correct details or ask for deletion. In demo mode, clearing site data removes local records.</p><button className="button button-light" onClick={() => alert("Demo request recorded. No data was sent.")}>Request my data</button><button className="button button-light" onClick={() => alert("Demo deletion request recorded. No live account exists.")}>Request account deletion</button></div></section></main></div>;
 }
 
 function DashboardNav({ role }: { role: "participant" | "worker" | "admin" }) {
+  const pathname = usePathname() || "/";
   const items = role === "participant" ? [["Overview", "/account"], ["Appointments", "/account/appointments"], ["Saved steps", "/account/pathways"], ["Referrals", "/account/referrals"]] : role === "worker" ? [["Today", "/worker"], ["Appointments", "/worker/appointments"], ["Availability", "/worker/availability"], ["Referrals", "/worker/referrals"]] : [["Pilot overview", "/admin"], ["Workers", "/admin/workers"], ["Resources", "/admin/resources"], ["Partners", "/admin/partners"], ["Locations", "/admin/locations"], ["Service settings", "/admin/service-settings"], ["Impact", "/admin/impact"]];
-  return <aside className="dashboard-nav"><BrandLogo /><span>{role === "participant" ? "Jamie’s account" : role === "worker" ? "Worker space · Maya" : "Pilot administration"}</span><nav>{items.map(([label, href]) => <a key={href} href={href}>{label}<ChevronRight /></a>)}</nav><a href="/demo" className="switch-role">Switch demo role</a></aside>;
+  return <aside className="dashboard-nav"><BrandLogo /><span>{role === "participant" ? "Jamie’s account" : role === "worker" ? "Worker space · Maya" : "Pilot administration"}</span><nav>{items.map(([label, href]) => <a key={href} href={href} aria-current={pathname === href ? "page" : undefined}>{label}<ChevronRight /></a>)}</nav><a href="/demo" className="switch-role">Switch demo role</a></aside>;
 }
 
 function AppointmentSummary({ appointment }: { appointment: Appointment }) {

@@ -112,8 +112,52 @@ test("keyboard reaches the booking flow", async ({ page }) => {
   await expect(page.locator(":focus")).toBeVisible();
 });
 
+test("booking topics and mobile progress are complete", async ({ page }) => {
+  await page.goto("/book");
+  await expect(page.getByRole("checkbox")).toHaveCount(8);
+  await page.getByRole("checkbox", { name: "Something else" }).check();
+  await expect(page.getByText("1 topic selected")).toBeVisible();
+  await expect(page.getByText("Step 1 of 6")).toBeAttached();
+});
+
+test("resource filters, status language and urgent actions are complete", async ({ page }) => {
+  await page.goto("/resources");
+  await expect(page.getByPlaceholder("Search by service or need")).toBeVisible();
+  await expect(page.getByLabel("Topic")).toHaveValue("All topics");
+  await expect(page.getByLabel("Format")).toHaveValue("Any format");
+  await expect(page.getByText("Future partner example").first()).toBeVisible();
+  await expect(page.getByRole("link", { name: "Call Kids Helpline" })).toHaveAttribute("href", "tel:1800551800");
+  await page.getByPlaceholder("Search by service or need").fill("no-result-on-purpose");
+  await expect(page.getByRole("button", { name: "Clear filters" }).first()).toBeVisible();
+});
+
+test("public navigation and footer branding expose polished states", async ({ page }) => {
+  await page.goto("/about");
+  await expect(page.locator('.desktop-nav a[href="/about"]')).toHaveAttribute("aria-current", "page");
+  const footerLogo = page.locator(".footer .brand-logo");
+  await expect(footerLogo).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+});
+
+test("merch store uses all five supplied product mockups", async ({ page }) => {
+  await page.goto("/merch");
+  await expect(page.locator(".product-grid article")).toHaveCount(5);
+  await expect(page.getByRole("heading", { name: "Community rally jacket" })).toBeVisible();
+  await expect(page.getByText("No pretend checkout")).toBeVisible();
+});
+
+test("key layouts do not overflow at required breakpoints", async ({ page }) => {
+  for (const width of [375, 768, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    for (const route of ["/", "/book", "/resources", "/about", "/merch"]) {
+      await page.goto(route);
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      expect(overflow, `${route} at ${width}px`).toBeLessThanOrEqual(0);
+    }
+  }
+});
+
 test("key pages have no serious axe violations", async ({ page }) => {
-  for (const route of ["/", "/start", "/book", "/resources", "/impact"]) {
+  for (const route of ["/", "/start", "/book", "/resources", "/about", "/merch", "/impact"]) {
     await page.goto(route);
     const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze();
     expect(results.violations.filter((violation) => ["serious", "critical"].includes(violation.impact || "")), `${route} accessibility`).toEqual([]);
