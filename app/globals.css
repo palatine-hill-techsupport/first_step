@@ -91,7 +91,7 @@ p { margin: 0 0 1.2rem; }
 .pathway-card:hover { z-index: 2; transform: translate(-4px, -4px); box-shadow: 8px 8px 0 var(--black); }
 .pathway-card h3 { font-size: 2rem; }
 .pathway-card p { max-width: 320px; }
-.pathway-icon { width: 58px; height: 58px; display: grid; place-items: center; border: 2px solid var(--black); background: white; margin-bottom: 2rem; transform: rotate(-3deg); }
+.pathway-icon { width: 58px; height: 58px; display: grid; place-items: center; border: 2px solid var(--black); background: white; color: var(--black); margin-bottom: 2rem; transform: rotate(-3deg); }
 .pathway-icon svg { width: 31px; height: 31px; }
 .card-link { margin-top: auto; display: flex; align-items: center; gap: .5rem; font-weight: 700; text-decoration: underline; text-underline-offset: 4px; }
 .card-link svg { width: 20px; }
