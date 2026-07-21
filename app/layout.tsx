@@ -1,0 +1,43 @@
+import type { Metadata } from "next";
+import "@fontsource/atkinson-hyperlegible/400.css";
+import "@fontsource/atkinson-hyperlegible/700.css";
+import "@fontsource/fredoka/500.css";
+import "@fontsource/fredoka/600.css";
+import "./globals.css";
+
+export const metadata: Metadata = {
+  title: {
+    default: "first_step — practical next steps",
+    template: "%s · first_step",
+  },
+  description: "Find a practical next step into support, study, paid work or stability. No life story required.",
+  icons: {
+    icon: "/brand/ico.ico",
+    shortcut: "/brand/ico.ico",
+  },
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),
+  openGraph: {
+    title: "first_step — The hardest step is always the first.",
+    description: "Practical next steps into support, study, paid work or stability.",
+    type: "website",
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: "The hardest step is always the first. Practical help. No life story required." }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "first_step — The hardest step is always the first.",
+    description: "Practical help. No life story required.",
+    images: ["/og.png"],
+  },
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en-AU">
+      <body>{children}</body>
+    </html>
+  );
+}
