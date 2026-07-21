@@ -155,7 +155,7 @@ p { margin: 0 0 1.2rem; }
 .event-promo { background: var(--red); }
 .event-promo > svg { width: 60px; height: 60px; position: absolute; right: 2rem; bottom: 2rem; }
 .merch-promo { background: var(--yellow); }
-.merch-promo > img { position: absolute; width: min(46%, 260px); height: 82%; right: .75rem; bottom: -8%; object-fit: cover; object-position: center; border: 2px solid var(--black); transform: rotate(3deg); }
+.merch-promo > img { position: absolute; width: min(46%, 260px); height: 82%; right: .75rem; bottom: -8%; background: var(--paper); object-fit: cover; object-position: center; border: 2px solid var(--black); transform: rotate(3deg); }
 .merch-promo p { position: relative; max-width: 48%; }
 .pathway-reset { align-items: center; background: var(--yellow); border: 2px solid var(--black); display: flex; gap: 1rem; justify-content: space-between; margin: 0 0 1.25rem; padding: .75rem 1rem; }
 .pathway-reset span { font-weight: 700; }
