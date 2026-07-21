@@ -74,7 +74,7 @@ p { margin: 0 0 1.2rem; }
 .hero-art { min-width: 0; position: relative; overflow: hidden; border-left: 3px solid var(--mint); }
 .hero-art > img { width: 100%; height: 100%; object-fit: cover; filter: saturate(.75) contrast(1.05); }
 .hero-art::after { content: ""; position: absolute; inset: 0; box-shadow: inset 0 0 100px #02020280; pointer-events: none; }
-.hero-note { position: absolute; z-index: 2; right: clamp(1rem, 4vw, 4rem); bottom: 2rem; width: min(330px, calc(100vw - 2rem)); min-height: 142px; padding: 1.15rem; color: var(--black); background: var(--mint); border: 3px solid var(--black); box-shadow: 6px 6px 0 var(--yellow); transform: rotate(2deg); font-family: var(--display); }
+.hero-note { position: absolute; z-index: 2; right: clamp(1rem, 4vw, 4rem); bottom: 2rem; width: min(330px, calc(100vw - 2rem)); min-height: 112px; padding: 1.15rem; color: var(--black); background: var(--mint); border: 3px solid var(--black); box-shadow: 6px 6px 0 var(--yellow); transform: rotate(2deg); font-family: var(--display); }
 .hero-note strong { display: block; font-size: 1.45rem; line-height: 1.25; max-width: 210px; white-space: nowrap; }
 .hero-note img { width: 65px; height: 55px; object-fit: contain; position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); }
 .urgent-strip, .urgent-panel { padding: 1.4rem clamp(1.25rem, 5vw, 5rem); background: var(--red); border-block: 2px solid var(--black); display: flex; justify-content: space-between; align-items: center; gap: 2rem; }
@@ -670,7 +670,7 @@ th { background: var(--navy); color: white; }
   .hero-actions { flex-direction: column; width: 100%; }
   .hero-actions .button { width: 100%; }
   .hero-art { height: 330px; }
-  .hero-note { width: min(330px, calc(100vw - 2rem)); min-height: 132px; }
+  .hero-note { width: min(330px, calc(100vw - 2rem)); min-height: 96px; }
   .hero-note strong { font-size: 1.22rem; max-width: 195px; }
   .urgent-strip, .urgent-panel { flex-direction: column; align-items: stretch; gap: 1rem; padding: 1.2rem; }
   .urgent-actions { flex-direction: column; }
