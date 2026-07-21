@@ -55,6 +55,27 @@ const navigation = [
   ["About", "/about"],
 ] as const;
 
+const deploymentBasePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
+const deploymentPath = (path: string) => deploymentBasePath && path.startsWith("/") ? `${deploymentBasePath}${path}` : path;
+
+function GitHubPagesPathFixer() {
+  useEffect(() => {
+    if (!deploymentBasePath) return;
+    const rewrite = () => {
+      document.querySelectorAll<HTMLAnchorElement | HTMLImageElement>('a[href^="/"], img[src^="/"]').forEach((element) => {
+        const attribute = element instanceof HTMLAnchorElement ? "href" : "src";
+        const value = element.getAttribute(attribute);
+        if (value && !value.startsWith("//") && !value.startsWith(deploymentBasePath)) element.setAttribute(attribute, deploymentPath(value));
+      });
+    };
+    rewrite();
+    const observer = new MutationObserver(rewrite);
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["href", "src"] });
+    return () => observer.disconnect();
+  }, []);
+  return null;
+}
+
 type SupportTopic = Topic | "Somewhere safe" | "Talk to someone";
 
 const supportTopicIcons: Record<SupportTopic, LucideIcon> = {
@@ -332,7 +353,7 @@ function GuidedPathway({ state }: { state: DemoState }) {
       setMode("");
       setFormatPreference("Any format");
       setStep(1);
-      window.history.replaceState({}, "", "/start");
+      window.history.replaceState({}, "", deploymentPath("/start"));
     } else {
       const saved = window.localStorage.getItem("first_step_pathway_progress");
       if (saved && !interacted.current) {
@@ -659,5 +680,5 @@ export default function FirstStepApp() {
   else if (parts[0] === "admin") page = <RoleGate required="admin" state={state}><AdminPage section={parts[1] || "overview"} state={state} /></RoleGate>;
   else page = <NotFound />;
 
-  return <><a className="skip-link" href="#main">Skip to content</a>{!isDashboard && <DemoModeBanner />}{!isDashboard && <AppHeader />}<main id="main">{page}</main>{!isDashboard && <Footer />}</>;
+  return <><GitHubPagesPathFixer /><a className="skip-link" href="#main">Skip to content</a>{!isDashboard && <DemoModeBanner />}{!isDashboard && <AppHeader />}<main id="main">{page}</main>{!isDashboard && <Footer />}</>;
 }
