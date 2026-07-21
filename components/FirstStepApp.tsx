@@ -38,7 +38,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { addDays, addMinutes, format, formatISO } from "date-fns";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { resources, urgentResources, workers } from "@/lib/demo-data";
 import { demonstrationReport, reportCurrency, reportPercent } from "@/lib/demo-report";
@@ -48,7 +48,8 @@ import { TOPICS } from "@/lib/types";
 import type { Appointment, AppointmentFormat, DemoState, Resource, Role, Topic } from "@/lib/types";
 
 const navigation = [
-  ["Start here", "/start"],
+  ["Home", "/"],
+  ["Start here", "/start?restart=1"],
   ["Book a youth worker", "/book"],
   ["Useful now", "/resources"],
   ["About", "/about"],
@@ -75,7 +76,7 @@ function SupportTopicIcon({ topic }: { topic: string }) {
 }
 
 function isNavigationActive(pathname: string, href: string) {
-  if (href === "/start") return pathname === "/start" || pathname.startsWith("/pathways/");
+  if (href.startsWith("/start")) return pathname === "/start" || pathname.startsWith("/pathways/");
   if (href === "/resources") return pathname === "/resources" || pathname.startsWith("/resources/");
   return pathname === href;
 }
@@ -320,6 +321,8 @@ const pathwayOptions: ReadonlyArray<readonly [string, string, SupportTopic]> = [
 ] as const;
 
 function GuidedPathway({ state }: { state: DemoState }) {
+  const searchParams = useSearchParams();
+  const restartRequested = searchParams.get("restart") === "1";
   const interacted = useRef(false);
   const [progressLoaded, setProgressLoaded] = useState(false);
   const [selection, setSelection] = useState<string>("");
@@ -327,12 +330,22 @@ function GuidedPathway({ state }: { state: DemoState }) {
   const [formatPreference, setFormatPreference] = useState("Any format");
   const [step, setStep] = useState(1);
   useEffect(() => {
-    const saved = window.localStorage.getItem("first_step_pathway_progress");
-    if (saved && !interacted.current) {
+    if (restartRequested) {
+      interacted.current = true;
+      window.localStorage.removeItem("first_step_pathway_progress");
+      setSelection("");
+      setMode("");
+      setFormatPreference("Any format");
+      setStep(1);
+      window.history.replaceState({}, "", "/start");
+    } else {
+      const saved = window.localStorage.getItem("first_step_pathway_progress");
+      if (saved && !interacted.current) {
       try { const data = JSON.parse(saved) as { selection?: string; step?: number }; setSelection(data.selection || ""); setStep(data.step || 1); } catch { /* start clean */ }
+      }
     }
     setProgressLoaded(true);
-  }, []);
+  }, [restartRequested]);
   useEffect(() => { if (selection) window.localStorage.setItem("first_step_pathway_progress", JSON.stringify({ selection, step })); }, [selection, step]);
   const choose = (value: string) => { interacted.current = true; setSelection(value); setStep(value === "safe" ? 99 : 2); };
   const results = recommendPathway(selection, resources);
@@ -341,6 +354,7 @@ function GuidedPathway({ state }: { state: DemoState }) {
   return (
     <div className="task-page">
       <PageIntro eyebrow="Choose a direction" title="What would make today a little easier?" copy="Pick the closest option. This is not an assessment, and you can change your mind." />
+      {step > 1 && <div className="pathway-reset"><span>Exploring a different option?</span><button type="button" onClick={restart}>Restart this guide</button></div>}
       {step !== 99 && <div className="progress-bar" role="progressbar" aria-label="Guided pathway progress" aria-valuemin={1} aria-valuemax={3} aria-valuenow={Math.min(step, 3)}><span style={{ width: `${(Math.min(step, 3) / 3) * 100}%` }} /></div>}
       {step === 1 && <div className="choice-grid">{pathwayOptions.map(([value, label, topic]) => <button disabled={!progressLoaded} key={value} onClick={() => choose(value)}><SupportTopicIcon topic={topic} /><span>{label}</span><ChevronRight /></button>)}</div>}
       {step === 99 && <><UrgentSupportBanner full /><div className="urgent-resource-grid">{urgentResources.map((resource) => <ResourceCard key={resource.id} resource={resource} />)}</div><div className="flow-actions"><button className="button button-light" onClick={restart}>Start again</button><a className="button button-black" href="/resources">Keep browsing</a></div></>}

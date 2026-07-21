@@ -134,8 +134,22 @@ test("resource filters, status language and urgent actions are complete", async 
 test("public navigation and footer branding expose polished states", async ({ page }) => {
   await page.goto("/about");
   await expect(page.locator('.desktop-nav a[href="/about"]')).toHaveAttribute("aria-current", "page");
+  await expect(page.locator('.desktop-nav a[href="/"]')).toHaveText("Home");
   const footerLogo = page.locator(".footer .brand-logo");
   await expect(footerLogo).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+});
+
+test("start navigation and the visible reset control restart the guided flow", async ({ page }) => {
+  await page.goto("/start");
+  const firstChoice = page.getByRole("button", { name: "I want to talk to someone" });
+  await expect(firstChoice).toHaveCount(1);
+  await firstChoice.click();
+  const restart = page.getByRole("button", { name: "Restart this guide" });
+  await expect(restart).toHaveCount(1);
+  await restart.click();
+  await expect(firstChoice).toBeVisible();
+  await page.locator('.desktop-nav a[href="/start?restart=1"]').click();
+  await expect(firstChoice).toBeVisible();
 });
 
 test("merch store uses all five supplied product mockups", async ({ page }) => {
