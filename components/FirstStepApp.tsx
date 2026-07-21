@@ -50,7 +50,7 @@ import type { Appointment, AppointmentFormat, DemoState, Resource, Role, Topic }
 const navigation = [
   ["Home", "/"],
   ["Start here", "/start?restart=1"],
-  ["Book a youth worker", "/book"],
+  ["Book a session", "/book"],
   ["Useful now", "/resources"],
   ["About", "/about"],
 ] as const;
