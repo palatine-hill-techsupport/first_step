@@ -116,13 +116,9 @@ export function BrandLogo({ compact = false }: { compact?: boolean }) {
   );
 }
 
-export function QuickExit({ destination = "youtube" }: { destination?: "youtube" | "tiktok" }) {
-  const isYouTube = destination === "youtube";
-  const label = isYouTube ? "YouTube Shorts" : "TikTok";
-  const exitUrl = isYouTube
-    ? process.env.NEXT_PUBLIC_QUICK_EXIT_URL || "https://www.youtube.com/shorts"
-    : "https://www.tiktok.com/";
-  return <button className="quick-exit" aria-label={`Quick exit to ${label}`} onClick={() => window.location.replace(exitUrl)}><ExternalLink size={17} /> {isYouTube ? "Quick exit" : "TikTok exit"}</button>;
+export function QuickExit() {
+  const exitUrl = process.env.NEXT_PUBLIC_QUICK_EXIT_URL || "https://www.youtube.com/shorts";
+  return <button className="quick-exit" aria-label="Quick exit to YouTube Shorts" onClick={() => window.location.replace(exitUrl)}><ExternalLink size={17} /> Quick exit</button>;
 }
 
 export function ServiceStatus({ compact = false }: { compact?: boolean }) {
@@ -211,7 +207,6 @@ export function Footer() {
         <ShieldCheck />
         <p><strong>first_step is a bridge, not an emergency service.</strong> Call 000 if someone is in immediate danger. We connect young people to qualified workers and existing services.</p>
         <QuickExit />
-        <QuickExit destination="tiktok" />
       </div>
       <p className="acknowledgement">first_step acknowledges the Traditional Owners of Country throughout Victoria and pays respect to Elders past and present.</p>
     </footer>
