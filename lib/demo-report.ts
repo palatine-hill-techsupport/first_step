@@ -3,6 +3,7 @@ export type ReportMetric = {
   label: string;
   value: number;
   note: string;
+  denominator?: string;
   status?: string;
 };
 
@@ -17,6 +18,7 @@ export const demonstrationReport = {
   pilot: {
     name: "Pilot 001",
     period: "Eight-week demonstration pilot",
+    lastUpdated: "22 July 2026",
     format: ["One TAFE-campus pop-up", "Online channel active throughout", "Scheduled youth-worker appointments", "Warm referrals into existing services", "Small paid-opportunity and placement pathway"],
   },
   metrics: {
@@ -40,12 +42,12 @@ export const demonstrationReport = {
     pilotBudget: 15000,
   },
   coreMetrics: [
-    { id: "booth", label: "Booth interactions", value: 186, note: "One public activation made the service visible.", status: "Above pilot assumption" },
-    { id: "signups", label: "Platform sign-ups", value: 92, note: "People who chose a way to return.", status: "Needs further testing" },
-    { id: "appointments", label: "Appointments completed", value: 39, note: "83% of booked conversations were attended.", status: "Strongest conversion point" },
-    { id: "referrals", label: "Accepted referrals", value: 24, note: "77% of consented referrals were accepted by a delivery partner.", status: "Small sample" },
-    { id: "opportunities", label: "Paid opportunities", value: 9, note: "Paid roles or lawful structured placements only.", status: "Needs further testing" },
-    { id: "confidence", label: "Confidence change", value: 1.2, note: "Average self-rating change on a five-point scale.", status: "Small sample" },
+    { id: "booth", label: "Booth interactions", value: 186, note: "One public activation made the service visible.", denominator: "n=186 interactions", status: "Demonstration count" },
+    { id: "signups", label: "Platform sign-ups", value: 92, note: "People who chose a way to return.", denominator: "n=1,284 platform visits", status: "Demonstration count" },
+    { id: "appointments", label: "Appointments completed", value: 39, note: "83% of booked conversations were attended.", denominator: "39 completed of 47 booked", status: "83% attendance" },
+    { id: "referrals", label: "Accepted referrals", value: 24, note: "77% of consented referrals were accepted by a delivery partner.", denominator: "24 accepted of 31 consented", status: "Small sample" },
+    { id: "opportunities", label: "Paid opportunities", value: 9, note: "Paid roles or lawful structured placements only.", denominator: "9 created in this pilot", status: "Demonstration count" },
+    { id: "confidence", label: "Confidence change", value: 1.2, note: "Average self-rating change on a five-point scale.", denominator: "Matched responses: 28", status: "Small sample" },
   ] satisfies ReportMetric[],
   funnel: [
     { id: "visits", label: "Platform visits", value: 1284 },
@@ -56,7 +58,7 @@ export const demonstrationReport = {
     { id: "attended", label: "Appointments completed", value: 39 },
     { id: "consented", label: "Referrals consented to", value: 31 },
     { id: "accepted", label: "Referrals accepted", value: 24 },
-    { id: "placements", label: "Participants beginning a paid placement", value: 6 },
+    { id: "placements", label: "Paid placements started", value: 6 },
   ] satisfies FunnelStage[],
   channels: [
     { name: "Public pop-up", interactions: 186, visits: 74, signUps: 31, appointments: 18, acceptedReferrals: 12, note: "Generated trust and awareness." },
