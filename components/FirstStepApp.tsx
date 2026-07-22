@@ -57,6 +57,8 @@ const navigation = [
   ["About", "/about"],
 ] as const;
 
+const deploymentPath = (path: string) => path;
+
 type SupportTopic = Topic | "Somewhere safe" | "Talk to someone";
 
 const supportTopicIcons: Record<SupportTopic, LucideIcon> = {
@@ -119,8 +121,8 @@ export function BrandLogo({ compact = false }: { compact?: boolean }) {
 }
 
 export function QuickExit() {
-  const exitUrl = process.env.NEXT_PUBLIC_QUICK_EXIT_URL || "https://www.youtube.com/shorts";
-  return <button className="quick-exit" aria-label="Quick exit to YouTube Shorts" onClick={() => window.location.replace(exitUrl)}><ExternalLink size={17} /> Quick exit</button>;
+  const exitUrl = process.env.NEXT_PUBLIC_QUICK_EXIT_URL || "https://www.tiktok.com/";
+  return <button className="quick-exit" aria-label="Quick exit to TikTok" onClick={() => window.location.replace(exitUrl)}><ExternalLink size={17} /> Quick exit</button>;
 }
 
 export function ServiceStatus({ compact = false }: { compact?: boolean }) {
