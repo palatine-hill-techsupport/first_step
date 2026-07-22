@@ -135,7 +135,7 @@ test("public navigation and footer branding expose polished states", async ({ pa
   await page.goto("/about");
   await expect(page.locator('.desktop-nav a[href="/about"]')).toHaveAttribute("aria-current", "page");
   await expect(page.locator('.desktop-nav a[href="/"]')).toHaveText("Home");
-  await expect(page.getByRole("button", { name: "Quick exit to YouTube Shorts" })).toHaveCount(2);
+  await expect(page.getByRole("button", { name: "Quick exit to TikTok" })).toHaveCount(2);
   const footerLogo = page.locator(".footer .brand-logo");
   await expect(footerLogo).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
 });
