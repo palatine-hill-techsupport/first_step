@@ -11,7 +11,7 @@ export const TOPICS = [
 
 export type Topic = (typeof TOPICS)[number];
 export type AppointmentFormat = "phone" | "video" | "text" | "in-person";
-export type Role = "participant" | "youth_worker" | "admin";
+export type Role = "participant" | "youth_worker" | "admin" | "committee";
 export type AppointmentStatus =
   | "requested"
   | "confirmed"
