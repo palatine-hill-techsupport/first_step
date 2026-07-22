@@ -58,7 +58,23 @@ const navigation = [
 ] as const;
 
 const deploymentBasePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
-const deploymentPath = (path: string) => deploymentBasePath && path.startsWith("/") ? `${deploymentBasePath}${path}` : path;
+const deploymentPath = (path: string) => {
+  if (!deploymentBasePath || !path.startsWith("/") || path.startsWith("//")) return path;
+  const separatorIndex = path.search(/[?#]/);
+  const pathname = separatorIndex === -1 ? path : path.slice(0, separatorIndex);
+  const suffix = separatorIndex === -1 ? "" : path.slice(separatorIndex);
+  const routePath = pathname === deploymentBasePath
+    ? "/"
+    : pathname.startsWith(`${deploymentBasePath}/`)
+      ? pathname.slice(deploymentBasePath.length)
+      : pathname;
+  const trailingRoutePath = routePath === "/" ? "/" : `${routePath.replace(/\/+$/, "")}/`;
+  return `${deploymentBasePath}${trailingRoutePath}${suffix}`;
+};
+const deploymentAssetPath = (path: string) => {
+  if (!deploymentBasePath || !path.startsWith("/") || path.startsWith("//") || path === deploymentBasePath || path.startsWith(`${deploymentBasePath}/`)) return path;
+  return `${deploymentBasePath}${path}`;
+};
 
 function GitHubPagesPathFixer() {
   useEffect(() => {
@@ -67,7 +83,10 @@ function GitHubPagesPathFixer() {
       document.querySelectorAll<HTMLAnchorElement | HTMLImageElement>('a[href^="/"], img[src^="/"]').forEach((element) => {
         const attribute = element instanceof HTMLAnchorElement ? "href" : "src";
         const value = element.getAttribute(attribute);
-        if (value && !value.startsWith("//") && !value.startsWith(deploymentBasePath)) element.setAttribute(attribute, deploymentPath(value));
+        if (value && !value.startsWith("//")) {
+          const rewritten = element instanceof HTMLAnchorElement ? deploymentPath(value) : deploymentAssetPath(value);
+          if (rewritten !== value) element.setAttribute(attribute, rewritten);
+        }
       });
     };
     rewrite();
@@ -134,7 +153,7 @@ function useDemoState() {
 export function BrandLogo({ compact = false }: { compact?: boolean }) {
   return (
     <a className="brand-logo" href={deploymentPath("/")} aria-label="first_step home">
-      <img src={deploymentPath(compact ? "/brand/first_step_logo-lettermark.svg" : "/brand/first_step_logo.svg")} alt="first_step" />
+      <img src={deploymentAssetPath(compact ? "/brand/first_step_logo-lettermark.svg" : "/brand/first_step_logo.svg")} alt="first_step" />
     </a>
   );
 }
@@ -748,8 +767,12 @@ function CommitteePage() {
 
 function NotFound() { return <div className="task-page"><EmptyState title="That page took a wrong turn.">Try the useful options or start with one question.<br /><a href="/start">Choose a first step</a></EmptyState></div>; }
 
-export default function FirstStepApp() {
-  const pathname = usePathname() || "/";
+export default function FirstStepApp({ initialPathname = "/" }: { initialPathname?: string } = {}) {
+  const rawPathname = usePathname() || initialPathname || "/";
+  const pathnameWithoutBase = deploymentBasePath && (rawPathname === deploymentBasePath || rawPathname.startsWith(`${deploymentBasePath}/`))
+    ? rawPathname.slice(deploymentBasePath.length) || "/"
+    : rawPathname;
+  const pathname = pathnameWithoutBase.length > 1 ? pathnameWithoutBase.replace(/\/$/, "") : pathnameWithoutBase;
   const { state, hydrated } = useDemoState();
   const parts = pathname.split("/").filter(Boolean);
   const isDashboard = ["account", "worker", "admin", "committee"].includes(parts[0] || "");
