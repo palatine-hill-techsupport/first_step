@@ -5,6 +5,9 @@ import "@fontsource/fredoka/500.css";
 import "@fontsource/fredoka/600.css";
 import "./globals.css";
 
+const deploymentBasePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
+const faviconPath = `${deploymentBasePath}/brand/ico.ico`;
+
 export const metadata: Metadata = {
   title: {
     default: "first_step — practical next steps",
@@ -12,8 +15,8 @@ export const metadata: Metadata = {
   },
   description: "Find a practical next step into support, study, paid work or stability. No life story required.",
   icons: {
-    icon: "/brand/ico.ico",
-    shortcut: "/brand/ico.ico",
+    icon: faviconPath,
+    shortcut: faviconPath,
   },
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),
   openGraph: {
