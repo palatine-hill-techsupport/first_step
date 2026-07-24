@@ -437,6 +437,35 @@ function BookingPage({ state }: { state: DemoState }) {
   const [slot, setSlot] = useState<Date>();
   const [form, setForm] = useState({ name: "", ageBand: "18–25" as "16–17" | "18–25", contactMethod: "email" as "email" | "phone" | "both", email: "", phone: "", suburb: "", accessibility: "", safeEmail: true, safeCall: false, safeVoicemail: false, consent: false, acknowledge: false });
   const [error, setError] = useState("");
+  useEffect(() => {
+    if (step !== 5) return;
+    const detailsForm = document.querySelector<HTMLFormElement>(".details-form");
+    if (!detailsForm) return;
+    detailsForm.querySelectorAll(".form-grid > label:nth-child(-n+3) input, .form-grid > label:nth-child(-n+3) select").forEach((field) => {
+      if (field instanceof HTMLInputElement || field instanceof HTMLSelectElement) {
+        field.required = true;
+        field.setAttribute("aria-required", "true");
+      }
+    });
+    detailsForm.querySelectorAll("fieldset:last-of-type input[type=checkbox]").forEach((field) => {
+      if (field instanceof HTMLInputElement) {
+        field.required = true;
+        field.setAttribute("aria-required", "true");
+      }
+    });
+    const consentLegend = detailsForm.querySelector("fieldset:last-of-type legend");
+    if (consentLegend) consentLegend.textContent = "Consent *";
+    const updateContactField = (selector: string, label: string, required: boolean) => {
+      const field = detailsForm.querySelector<HTMLInputElement>(selector);
+      if (!field) return;
+      field.required = required;
+      field.setAttribute("aria-required", String(required));
+      const labelText = field.closest("label")?.querySelector("span");
+      if (labelText) labelText.textContent = required ? `${label} *` : label;
+    };
+    updateContactField('input[type="email"]', "Email", form.contactMethod !== "phone");
+    updateContactField('input[type="tel"]', "Phone", form.contactMethod !== "email");
+  }, [form.contactMethod, step]);
   const [confirmation, setConfirmation] = useState<Appointment>();
   const availableSlots = useMemo(() => generateSlots({ from: new Date(), format: appointmentFormat, existing: state.appointments }), [appointmentFormat, state.appointments]);
   const toggleTopic = (topic: Topic) => setTopics((current) => current.includes(topic) ? current.filter((item) => item !== topic) : [...current, topic]);
@@ -694,7 +723,7 @@ function DemoPage({ state, hydrated }: { state: DemoState; hydrated: boolean }) 
     { id: "admin", name: "Administrator", person: "Pilot administrator", copy: "Manages workers, resources, settings and aggregate activity.", href: "/admin", icon: <SlidersHorizontal /> },
     { id: "committee", name: "Committee", person: "Governance committee", copy: "Reviews pilot evidence, safeguards and the decisions needed before scale.", href: "/committee", icon: <Scale /> },
   ];
-  return <div className="task-page"><PageIntro eyebrow="Demo mode" title="Try each side of the pilot." copy="This control exists only in demo mode. Production roles come from authenticated Supabase profiles." /><div className="demo-role-grid" data-hydrated={hydrated}>{roles.map((role) => <button disabled={!hydrated} className={state.role === role.id ? "selected" : ""} onClick={() => { demoRepository.setRole(role.id); window.location.assign(role.href); }} key={role.id}>{role.icon}<span>{role.name}</span><h2>{role.person}</h2><p>{role.copy}</p><strong>{state.role === role.id ? "Current role" : "Switch and open"} <ArrowRight /></strong></button>)}</div><div className="demo-checklist"><h2>Suggested review</h2><ol><li>Complete a guided pathway on a mobile-sized screen.</li><li>Book a sample appointment as a guest.</li><li>Switch to Maya and confirm the booking.</li><li>Offer a warm referral, then consent as Jamie.</li><li>Open the committee view and test the scale decision against the evidence.</li><li>Check admin aggregate data never exposes participant details.</li></ol></div></div>;
+  return <div className="task-page"><PageIntro eyebrow="Demo mode" title="Try each side of the pilot." copy="This control exists only in demo mode. Production roles come from authenticated Supabase profiles." /><div className="demo-role-grid" data-hydrated={hydrated}>{roles.map((role) => <button disabled={!hydrated} className={state.role === role.id ? "selected" : ""} onClick={() => { demoRepository.setRole(role.id); window.location.assign(deploymentPath(role.href)); }} key={role.id}>{role.icon}<span>{role.name}</span><h2>{role.person}</h2><p>{role.copy}</p><strong>{state.role === role.id ? "Current role" : "Switch and open"} <ArrowRight /></strong></button>)}</div><div className="demo-checklist"><h2>Suggested review</h2><ol><li>Complete a guided pathway on a mobile-sized screen.</li><li>Book a sample appointment as a guest.</li><li>Switch to Maya and confirm the booking.</li><li>Offer a warm referral, then consent as Jamie.</li><li>Open the committee view and test the scale decision against the evidence.</li><li>Check admin aggregate data never exposes participant details.</li></ol></div></div>;
 }
 
 function RoleGate({ required, state, children }: { required: Role; state: DemoState; children: ReactNode }) {
