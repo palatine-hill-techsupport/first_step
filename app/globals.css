@@ -808,7 +808,8 @@ th { background: var(--navy); color: white; }
   .pilot-readiness ul { grid-template-columns: 1fr; }
   .booking-private-details dl { grid-template-columns: 1fr; }
   .booking-private-details dl div.full { grid-column: auto; }
-  .confirmation-panel dl div { grid-template-columns: 92px 1fr; }
+  .confirmation-panel dl div { grid-template-columns: minmax(110px, max-content) minmax(0, 1fr); column-gap: .75rem; }
+  .confirmation-panel dd { min-width: 0; overflow-wrap: anywhere; }
   .dashboard-page { width: 100%; max-width: 100vw; grid-template-columns: minmax(0, 1fr); overflow-x: hidden; }
   .dashboard-nav { min-height: auto; height: auto; position: static; padding: 1rem; }
   .dashboard-nav .brand-logo { width: 120px; height: 50px; }
