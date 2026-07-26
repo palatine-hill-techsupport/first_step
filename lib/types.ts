@@ -11,6 +11,8 @@ export const TOPICS = [
 
 export type Topic = (typeof TOPICS)[number];
 export type AppointmentFormat = "phone" | "video" | "text" | "in-person";
+export type AgeBand = "15–17" | "18–25";
+export type ContactMethod = "email" | "phone" | "sms";
 export type Role = "participant" | "youth_worker" | "admin" | "committee";
 export type AppointmentStatus =
   | "requested"
@@ -36,18 +38,20 @@ export interface Appointment {
   id: string;
   managementToken: string;
   participantName: string;
-  ageBand: "16–17" | "18–25";
+  ageBand: AgeBand;
   workerId: string;
   format: AppointmentFormat;
   startAt: string;
   endAt: string;
   topics: Topic[];
-  contactMethod: "email" | "phone" | "both";
+  contactMethod: ContactMethod;
   email?: string;
   phone?: string;
   safeToEmail: boolean;
   safeToCall: boolean;
+  safeToText: boolean;
   safeToVoicemail: boolean;
+  safeContactNotes?: string;
   status: AppointmentStatus;
   accessibilityNeeds?: string;
   meetingUrl?: string;

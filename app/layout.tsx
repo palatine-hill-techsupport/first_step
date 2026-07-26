@@ -23,13 +23,13 @@ export const metadata: Metadata = {
     title: "first_step — The hardest step is always the first.",
     description: "Practical next steps into support, study, paid work or stability.",
     type: "website",
-    images: [{ url: "/og.png", width: 1200, height: 630, alt: "The hardest step is always the first. Practical help. No life story required." }],
+    images: [{ url: "/og-review-updates.png", width: 1730, height: 909, alt: "first_step — One useful step. On your terms. Support, study, work and referrals." }],
   },
   twitter: {
     card: "summary_large_image",
     title: "first_step — The hardest step is always the first.",
     description: "Practical help. No life story required.",
-    images: ["/og.png"],
+    images: ["/og-review-updates.png"],
   },
 };
 

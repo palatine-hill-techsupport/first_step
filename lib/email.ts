@@ -1,5 +1,8 @@
 import { Resend } from "resend";
 import type { Appointment } from "./types";
+import { buildAppointmentConfirmationText } from "./appointment-confirmation";
+
+export { buildAppointmentConfirmationText } from "./appointment-confirmation";
 
 export interface EmailDelivery {
   sendAppointmentConfirmation(appointment: Appointment): Promise<{ id?: string; preview?: string }>;
@@ -7,7 +10,7 @@ export interface EmailDelivery {
 
 export class DemoEmailDelivery implements EmailDelivery {
   async sendAppointmentConfirmation(appointment: Appointment) {
-    return { preview: `Hi ${appointment.participantName}, your first_step appointment is booked for ${new Date(appointment.startAt).toLocaleString("en-AU", { timeZone: "Australia/Melbourne" })}.` };
+    return { preview: buildAppointmentConfirmationText(appointment) };
   }
 }
 
@@ -15,12 +18,12 @@ export class ResendEmailDelivery implements EmailDelivery {
   private resend: Resend;
   constructor(apiKey: string, private from: string) { this.resend = new Resend(apiKey); }
   async sendAppointmentConfirmation(appointment: Appointment) {
-    if (!appointment.email || !appointment.safeToEmail) return {};
+    if (appointment.contactMethod !== "email" || !appointment.email || !appointment.safeToEmail) return {};
     const result = await this.resend.emails.send({
       from: this.from,
       to: appointment.email,
       subject: "Your first_step appointment is booked",
-      text: `Hi ${appointment.participantName}, your conversation is booked for ${new Date(appointment.startAt).toLocaleString("en-AU", { timeZone: "Australia/Melbourne" })}. first_step is not emergency support.`,
+      text: buildAppointmentConfirmationText(appointment),
     });
     return { id: result.data?.id };
   }

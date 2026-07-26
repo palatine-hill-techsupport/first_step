@@ -1,6 +1,6 @@
 # first_step
 
-first_step is an Australian pilot platform that makes the first practical step easier for young people aged 16–25 facing housing instability, homelessness risk or barriers to financial stability.
+first_step is an Australian pilot platform that makes the first practical step easier for young people aged 15–25 facing housing instability, homelessness risk or barriers to financial stability.
 
 It sits before existing services. It helps someone choose a direction, understand what will happen, book a qualified youth worker and consent to a warm referral. It does not replace housing services, youth workers, TAFE, social enterprises or specialist support.
 
@@ -43,7 +43,8 @@ supabase/migrations/    Postgres schema, constraints and RLS
 supabase/seed.sql       Demonstration seed content
 tests/unit/             Vitest domain and privacy tests
 tests/e2e/              Playwright journeys and axe checks
-docs/                   Product, safeguarding, data and launch decisions
+internal-docs/          Draft internal pilot-readiness requirements
+docs/                   Generated GitHub Pages export; do not hand-edit
 ```
 
 The workspace includes a Sites-compatible Vinext build for portable preview hosting. The code remains standard App Router code. For the intended Vercel target, use the documented Next build command after production Supabase configuration.
@@ -141,7 +142,7 @@ Playwright uses installed Google Chrome and runs mobile plus 1440px desktop proj
 3. Use the standard Next.js build (`next build`) after the production adapter is enabled.
 4. Add the Vercel URL to Supabase authentication redirect allowlists.
 5. Verify email, quick exit, time zone, booking overlap and RLS in a staging project.
-6. Run the production-readiness checklist before enabling real bookings.
+6. Review and sign off the [draft pilot-readiness requirements](internal-docs/pilot-readiness.md) before enabling real bookings.
 
 The included Sites/Vinext build is suitable for a demonstration deployment. It is not the authority for production data handling.
 
@@ -170,4 +171,4 @@ The included Sites/Vinext build is suitable for a demonstration deployment. It i
 - Accessibility audit with young people using assistive technology
 - Security review, penetration test and incident-response exercise
 
-See [production checklist](docs/production-checklist.md) and [safeguarding assumptions](docs/safeguarding-assumptions.md).
+See the [draft pilot-readiness requirements](internal-docs/pilot-readiness.md). This internal note records required evidence and approvals; it does not confirm that first_step is ready to operate.

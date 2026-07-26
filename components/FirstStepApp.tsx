@@ -40,14 +40,24 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { addDays, addMinutes, format, formatISO } from "date-fns";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { resources, urgentResources, workers } from "@/lib/demo-data";
 import { demonstrationReport, reportCurrency, reportPercent } from "@/lib/demo-report";
 import { generateSlots, makeIcs, makeToken, recommendPathway, topicsFromSelection } from "@/lib/domain";
+import { buildAppointmentConfirmationText } from "@/lib/appointment-confirmation";
+import {
+  ACKNOWLEDGEMENT_OF_COUNTRY,
+  CONFIDENTIAL_NOTES_COPY,
+  FAQ_ITEMS,
+  FIRST_STEP_COMMITMENTS,
+  PILOT_READINESS_ITEMS,
+  POLICY_REVIEW_NOTICE,
+} from "@/lib/policy-content";
 import { demoRepository } from "@/lib/repository";
+import { bookingSchema } from "@/lib/validation";
 import { TOPICS } from "@/lib/types";
-import type { Appointment, AppointmentFormat, DemoState, Resource, Role, Topic } from "@/lib/types";
+import type { Appointment, AppointmentFormat, ContactMethod, DemoState, Resource, Role, Topic } from "@/lib/types";
 
 const navigation = [
   ["Home", "/"],
@@ -130,6 +140,14 @@ const formatLabels: Record<AppointmentFormat, string> = {
   "in-person": "In person",
 };
 
+const contactMethodLabels: Record<ContactMethod, string> = {
+  email: "Email",
+  phone: "Phone call",
+  sms: "SMS/text",
+};
+
+const SAFE_CONTACT_NOTES_MAX = 500;
+
 function useDemoState() {
   const [hydrated, setHydrated] = useState(false);
   const [state, setState] = useState<DemoState>({
@@ -185,7 +203,7 @@ export function DemoModeBanner() {
 
 export function UrgentSupportBanner({ full = false }: { full?: boolean }) {
   return (
-    <section className={full ? "urgent-panel" : "urgent-strip"} aria-labelledby={full ? "urgent-heading" : undefined}>
+    <section className={full ? "urgent-panel" : "urgent-strip"} aria-labelledby={full ? "urgent-heading" : undefined} aria-label={full ? undefined : "Urgent support"}>
       <div>
         <span className="eyebrow urgent"><AlertTriangle size={16} /> Need help now?</span>
         {full ? <h2 id="urgent-heading">You do not need to finish a quiz.</h2> : <strong>Need somewhere safe tonight?</strong>}
@@ -201,7 +219,12 @@ export function UrgentSupportBanner({ full = false }: { full?: boolean }) {
 
 export function AppHeader() {
   const [open, setOpen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
   const pathname = usePathname() || "/";
+  const closeMenu = () => {
+    setOpen(false);
+    requestAnimationFrame(() => menuButtonRef.current?.focus());
+  };
   return (
     <>
       <header className="app-header">
@@ -212,22 +235,33 @@ export function AppHeader() {
         <div className="header-actions">
           <QuickExit />
           <a className="button button-black header-book" href={deploymentPath("/book")}>Talk to someone</a>
-          <button className="menu-button" aria-label="Open menu" aria-expanded={open} onClick={() => setOpen(true)}><Menu /></button>
+          <button ref={menuButtonRef} className="menu-button" aria-label="Open menu" aria-expanded={open} aria-controls="mobile-navigation" onClick={() => setOpen(true)}><Menu /></button>
         </div>
       </header>
-      <MobileNavigation open={open} onClose={() => setOpen(false)} />
+      <MobileNavigation open={open} onClose={closeMenu} />
     </>
   );
 }
 
 export function MobileNavigation({ open, onClose }: { open: boolean; onClose: () => void }) {
   const pathname = usePathname() || "/";
+  useEffect(() => {
+    if (!open) return;
+    const closeButton = document.querySelector<HTMLButtonElement>("#mobile-navigation button");
+    closeButton?.focus();
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [open, onClose]);
   if (!open) return null;
   return (
     <div className="mobile-nav-backdrop" role="presentation" onClick={onClose}>
-      <nav className="mobile-nav" aria-label="Mobile navigation" onClick={(event) => event.stopPropagation()}>
+      <nav className="mobile-nav" id="mobile-navigation" aria-label="Mobile navigation" onClick={(event) => event.stopPropagation()}>
         <button aria-label="Close menu" onClick={onClose}><X /></button>
         {navigation.map(([label, href]) => <a key={href} href={deploymentPath(href)} aria-current={isNavigationActive(pathname, href) ? "page" : undefined}>{label}<ChevronRight /></a>)}
+        <a href={deploymentPath("/faq")} aria-current={pathname === "/faq" ? "page" : undefined}>Questions & answers<ChevronRight /></a>
         <a href={deploymentPath("/pathways/safe-tonight")} className="urgent-link">Need somewhere safe tonight?</a>
         <a href={deploymentPath("/account")}>My account</a>
         <ServiceStatus />
@@ -242,7 +276,7 @@ export function Footer() {
       <div className="footer-main">
         <div className="footer-brand"><BrandLogo /><p>Take one useful step.<br />Come back when you need the next.</p></div>
         <div><h2>Get help</h2><a href={deploymentPath("/start")}>Choose a first step</a><a href={deploymentPath("/book")}>Book a youth worker</a><a href={deploymentPath("/resources")}>Browse useful options</a><a href={deploymentPath("/safety")}>Urgent support</a></div>
-        <div><h2>About</h2><a href={deploymentPath("/about")}>How it works</a><a href={deploymentPath("/partners")}>Partners</a><a href={deploymentPath("/impact")}>Pilot impact</a><a href={deploymentPath("/impact-dashboard")}>Partner impact demo</a><a href={deploymentPath("/merch")}>Drop 001</a></div>
+        <div><h2>About</h2><a href={deploymentPath("/about")}>How it works</a><a href={deploymentPath("/faq")}>Questions & answers</a><a href={deploymentPath("/partners")}>Partners</a><a href={deploymentPath("/impact")}>Pilot impact</a><a href={deploymentPath("/impact-dashboard")}>Partner impact demo</a><a href={deploymentPath("/merch")}>Drop 001</a></div>
         <div><h2>The small print, plainly</h2><a href={deploymentPath("/privacy")}>Privacy</a><a href={deploymentPath("/consent")}>Consent</a><a href={deploymentPath("/terms")}>Terms & service status</a><a href={deploymentPath("/demo")}>Demo mode</a></div>
       </div>
       <div className="footer-boundary">
@@ -250,7 +284,7 @@ export function Footer() {
         <p><strong>first_step is a bridge, not an emergency service.</strong> Call 000 if someone is in immediate danger. We connect young people to qualified workers and existing services.</p>
         <QuickExit />
       </div>
-      <p className="acknowledgement">first_step acknowledges the Traditional Owners of Country throughout Victoria and pays respect to Elders past and present.</p>
+      <p className="acknowledgement">{ACKNOWLEDGEMENT_OF_COUNTRY}</p>
     </footer>
   );
 }
@@ -423,59 +457,161 @@ export function SlotPicker({ slots, selected, onSelect }: { slots: Date[]; selec
   return <div className="slot-grid">{slots.map((slot) => <button key={slot.toISOString()} className={selected?.toISOString() === slot.toISOString() ? "selected" : ""} onClick={() => onSelect(slot)}>{format(slot, "h:mm a")}</button>)}</div>;
 }
 
-export function ConsentSummary() {
-  return <aside className="consent-summary"><ShieldCheck /><div><h3>What we collect — and why</h3><p>Your chosen name, age band and safe contact details help us run this appointment. The assigned worker and authorised admins can see them. Sponsors cannot.</p><a href="/privacy">Read the plain-language privacy summary</a></div></aside>;
+function PolicyDraftNotice() {
+  return <p className="policy-draft-notice"><AlertTriangle aria-hidden="true" />{POLICY_REVIEW_NOTICE}</p>;
 }
 
+function ConfidentialNotesDisclosure({ compact = false }: { compact?: boolean }) {
+  return (
+    <aside className={`confidential-notes ${compact ? "compact" : ""}`} aria-labelledby={compact ? "booking-notes-title" : undefined}>
+      <ShieldCheck aria-hidden="true" />
+      <div>
+        <h3 id={compact ? "booking-notes-title" : undefined}>Brief, confidential notes</h3>
+        <p>{CONFIDENTIAL_NOTES_COPY.intro}</p>
+        <p>{CONFIDENTIAL_NOTES_COPY.limits}</p>
+      </div>
+    </aside>
+  );
+}
+
+function FieldError({ id, children }: { id: string; children?: string }) {
+  if (!children) return null;
+  return <span className="field-error" id={id}><AlertTriangle aria-hidden="true" />{children}</span>;
+}
+
+export function ConsentSummary() {
+  return <aside className="consent-summary"><ShieldCheck aria-hidden="true" /><div><h3>What we collect — and why</h3><p>Your chosen name, age band, selected contact details and any optional instructions help us run this appointment. Your assigned worker and authorised pilot administrators can see them. Sponsors cannot.</p><div className="policy-inline-links"><a href="/consent">Read about consent</a><a href="/privacy">Read about privacy</a></div></div></aside>;
+}
+
+type BookingField =
+  | "name"
+  | "ageBand"
+  | "contactMethod"
+  | "email"
+  | "phone"
+  | "safeEmail"
+  | "safeCall"
+  | "safeText"
+  | "safeContactNotes"
+  | "accessibility"
+  | "consent"
+  | "acknowledge";
+
+type BookingFieldErrors = Partial<Record<BookingField, string>>;
+
 function BookingPage({ state }: { state: DemoState }) {
-  const router = useRouter();
-  const [step, setStep] = useState(1);
-  const queryTopic = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("topic") : null;
+  const searchParams = useSearchParams();
+  const existingConfirmation = state.appointments.find((appointment) => appointment.managementToken === searchParams.get("confirmation"));
+  const [step, setStep] = useState(existingConfirmation ? 6 : 1);
+  const queryTopic = searchParams.get("topic");
   const [topics, setTopics] = useState<Topic[]>(queryTopic ? topicsFromSelection(queryTopic) : []);
   const [appointmentFormat, setAppointmentFormat] = useState<AppointmentFormat>("phone");
   const [workerId, setWorkerId] = useState("first-available");
   const [slot, setSlot] = useState<Date>();
-  const [form, setForm] = useState({ name: "", ageBand: "18–25" as "16–17" | "18–25", contactMethod: "email" as "email" | "phone" | "both", email: "", phone: "", suburb: "", accessibility: "", safeEmail: true, safeCall: false, safeVoicemail: false, consent: false, acknowledge: false });
+  const [form, setForm] = useState({
+    name: "",
+    ageBand: "18–25" as Appointment["ageBand"],
+    contactMethod: "email" as ContactMethod,
+    email: "",
+    phone: "",
+    accessibility: "",
+    safeContactNotes: "",
+    safeEmail: false,
+    safeCall: false,
+    safeText: false,
+    safeVoicemail: false,
+    consent: false,
+    acknowledge: false,
+  });
   const [error, setError] = useState("");
-  useEffect(() => {
-    if (step !== 5) return;
-    const detailsForm = document.querySelector<HTMLFormElement>(".details-form");
-    if (!detailsForm) return;
-    detailsForm.querySelectorAll(".form-grid > label:nth-child(-n+3) input, .form-grid > label:nth-child(-n+3) select").forEach((field) => {
-      if (field instanceof HTMLInputElement || field instanceof HTMLSelectElement) {
-        field.required = true;
-        field.setAttribute("aria-required", "true");
-      }
-    });
-    detailsForm.querySelectorAll("fieldset:last-of-type input[type=checkbox]").forEach((field) => {
-      if (field instanceof HTMLInputElement) {
-        field.required = true;
-        field.setAttribute("aria-required", "true");
-      }
-    });
-    const consentLegend = detailsForm.querySelector("fieldset:last-of-type legend");
-    if (consentLegend) consentLegend.textContent = "Consent *";
-    const updateContactField = (selector: string, label: string, required: boolean) => {
-      const field = detailsForm.querySelector<HTMLInputElement>(selector);
-      if (!field) return;
-      field.required = required;
-      field.setAttribute("aria-required", String(required));
-      const labelText = field.closest("label")?.querySelector("span");
-      if (labelText) labelText.textContent = required ? `${label} *` : label;
-    };
-    updateContactField('input[type="email"]', "Email", form.contactMethod !== "phone");
-    updateContactField('input[type="tel"]', "Phone", form.contactMethod !== "email");
-  }, [form.contactMethod, step]);
-  const [confirmation, setConfirmation] = useState<Appointment>();
+  const [fieldErrors, setFieldErrors] = useState<BookingFieldErrors>({});
+  const [confirmation, setConfirmation] = useState<Appointment | undefined>(existingConfirmation);
   const availableSlots = useMemo(() => generateSlots({ from: new Date(), format: appointmentFormat, existing: state.appointments }), [appointmentFormat, state.appointments]);
   const toggleTopic = (topic: Topic) => setTopics((current) => current.includes(topic) ? current.filter((item) => item !== topic) : [...current, topic]);
-  const next = () => { setError(""); if (step === 1 && !topics.length) return setError("Choose at least one topic. ‘I am not sure’ is completely fine."); if (step === 4 && !slot) return setError("Choose a time to continue."); setStep((current) => Math.min(6, current + 1)); };
+  const clearFieldError = (field: BookingField) => setFieldErrors((current) => {
+    if (!current[field]) return current;
+    const nextErrors = { ...current };
+    delete nextErrors[field];
+    return nextErrors;
+  });
+  const chooseContactMethod = (contactMethod: ContactMethod) => {
+    setForm((current) => ({
+      ...current,
+      contactMethod,
+      email: contactMethod === "email" ? current.email : "",
+      phone: contactMethod === "email" ? "" : current.phone,
+      safeEmail: false,
+      safeCall: false,
+      safeText: false,
+      safeVoicemail: contactMethod === "phone" ? current.safeVoicemail : false,
+    }));
+    setFieldErrors((current) => {
+      const nextErrors = { ...current };
+      (["contactMethod", "email", "phone", "safeEmail", "safeCall", "safeText"] as BookingField[]).forEach((field) => delete nextErrors[field]);
+      return nextErrors;
+    });
+  };
+  const next = () => {
+    setError("");
+    if (step === 1 && !topics.length) {
+      setError("Choose at least one topic. ‘I am not sure’ is completely fine.");
+      requestAnimationFrame(() => document.querySelector<HTMLInputElement>(".topic-fieldset input")?.focus());
+      return;
+    }
+    if (step === 4 && !slot) {
+      setError("Choose a time to continue.");
+      requestAnimationFrame(() => document.querySelector<HTMLButtonElement>(".slot-grid button")?.focus());
+      return;
+    }
+    setStep((current) => Math.min(6, current + 1));
+  };
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    if (!form.name.trim()) return setError("Add the name you want us to use.");
-    if (!form.consent || !form.acknowledge) return setError("Please confirm consent and the service-hours acknowledgement.");
-    if ((form.contactMethod === "email" || form.contactMethod === "both") && !/^\S+@\S+\.\S+$/.test(form.email)) return setError("Add a working email address, or choose phone.");
-    if ((form.contactMethod === "phone" || form.contactMethod === "both") && form.phone.replace(/\D/g, "").length < 8) return setError("Add a working phone number, or choose email.");
+    const result = bookingSchema.safeParse({
+      participantName: form.name,
+      ageBand: form.ageBand,
+      contactMethod: form.contactMethod,
+      email: form.email,
+      phone: form.phone,
+      safeToEmail: form.safeEmail,
+      safeToCall: form.safeCall,
+      safeToText: form.safeText,
+      safeToVoicemail: form.safeVoicemail,
+      supportTopics: topics,
+      accessibilityNeeds: form.accessibility,
+      safeContactNotes: form.safeContactNotes,
+      consented: form.consent,
+      serviceAcknowledged: form.acknowledge,
+    });
+    if (!result.success) {
+      const pathMap: Record<string, BookingField> = {
+        participantName: "name",
+        ageBand: "ageBand",
+        contactMethod: "contactMethod",
+        email: "email",
+        phone: "phone",
+        safeToEmail: "safeEmail",
+        safeToCall: "safeCall",
+        safeToText: "safeText",
+        safeContactNotes: "safeContactNotes",
+        accessibilityNeeds: "accessibility",
+        consented: "consent",
+        serviceAcknowledged: "acknowledge",
+      };
+      const nextErrors: BookingFieldErrors = {};
+      result.error.issues.forEach((issue) => {
+        const field = pathMap[String(issue.path[0])];
+        if (field && !nextErrors[field]) nextErrors[field] = issue.message;
+      });
+      setFieldErrors(nextErrors);
+      setError("Check the highlighted fields. We moved focus to the first one.");
+      const focusOrder: BookingField[] = ["name", "ageBand", "contactMethod", "email", "phone", "safeEmail", "safeCall", "safeText", "safeContactNotes", "accessibility", "consent", "acknowledge"];
+      const firstInvalid = focusOrder.find((field) => nextErrors[field]);
+      if (firstInvalid) requestAnimationFrame(() => document.getElementById(`booking-${firstInvalid}`)?.focus());
+      return;
+    }
+    setFieldErrors({});
+    setError("");
     const start = slot || availableSlots[0];
     const appointment: Appointment = {
       id: `appt-${Date.now()}`,
@@ -488,18 +624,21 @@ function BookingPage({ state }: { state: DemoState }) {
       endAt: formatISO(addMinutes(start, 30)),
       topics,
       contactMethod: form.contactMethod,
-      email: form.email || undefined,
-      phone: form.phone || undefined,
-      safeToEmail: form.safeEmail,
-      safeToCall: form.safeCall,
-      safeToVoicemail: form.safeVoicemail,
+      email: form.contactMethod === "email" ? form.email.trim() : undefined,
+      phone: form.contactMethod === "email" ? undefined : form.phone.trim(),
+      safeToEmail: form.contactMethod === "email" && form.safeEmail,
+      safeToCall: form.contactMethod === "phone" && form.safeCall,
+      safeToText: form.contactMethod === "sms" && form.safeText,
+      safeToVoicemail: form.contactMethod === "phone" && form.safeVoicemail,
       status: "confirmed",
       accessibilityNeeds: form.accessibility || undefined,
+      safeContactNotes: form.safeContactNotes.trim() || undefined,
       consentedAt: new Date().toISOString(),
     };
     demoRepository.createAppointment(appointment);
     setConfirmation(appointment);
     setStep(6);
+    window.history.replaceState({}, "", deploymentPath(`/book?confirmation=${encodeURIComponent(appointment.managementToken)}`));
   };
   const downloadCalendar = () => {
     if (!confirmation) return;
@@ -516,8 +655,115 @@ function BookingPage({ state }: { state: DemoState }) {
       {step === 2 && <section className="booking-panel"><h2>How would you like to talk?</h2><div className="format-choice-grid">{([{ id: "phone", icon: <Phone />, copy: "We call your safe number at the booked time." }, { id: "video", icon: <Video />, copy: "A private link is sent before the appointment." }, { id: "text", icon: <MessageCircle />, copy: "A secure thread opens shortly before your time." }, { id: "in-person", icon: <MapPin />, copy: "Meet at a listed pilot location." }] as const).map((item) => <button key={item.id} className={appointmentFormat === item.id ? "selected" : ""} onClick={() => setAppointmentFormat(item.id)}>{item.icon}<strong>{formatLabels[item.id]}</strong><span>{item.copy}</span>{appointmentFormat === item.id && <CheckCircle2 />}</button>)}</div>{appointmentFormat === "text" && <p className="inline-note"><Clock3 /> Scheduled chat is with a real worker, not a bot. It is checked only during response hours.</p>}<FlowButtons step={step} next={next} back={() => setStep(1)} /></section>}
       {step === 3 && <section className="booking-panel"><h2>Choose a worker — or first available.</h2><button className={`first-available ${workerId === "first-available" ? "selected" : ""}`} onClick={() => setWorkerId("first-available")}><UsersRound /><div><strong>First available</strong><span>Usually the quickest option. We match by topic and format.</span></div>{workerId === "first-available" && <CheckCircle2 />}</button><div className="worker-list">{workers.filter((worker) => worker.formats.includes(appointmentFormat)).map((worker) => <WorkerCard key={worker.id} worker={worker} selected={workerId === worker.id} onSelect={() => setWorkerId(worker.id)} />)}</div><FlowButtons step={step} next={next} back={() => setStep(2)} /></section>}
       {step === 4 && <section className="booking-panel"><h2>Choose a date and time.</h2><p>Times are in Australia/Melbourne. Slots include a 15-minute worker buffer.</p><AppointmentCalendar slots={availableSlots} selected={slot} onSelect={setSlot} /><FlowButtons step={step} next={next} back={() => setStep(3)} /></section>}
-      {step === 5 && <form className="booking-panel details-form" onSubmit={submit} noValidate><h2>Just enough detail to run the appointment.</h2><ConsentSummary /><div className="form-grid"><label><span>Name you want us to use *</span><input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} autoComplete="given-name" /></label><label><span>Age band *</span><select value={form.ageBand} onChange={(event) => setForm({ ...form, ageBand: event.target.value as typeof form.ageBand })}><option>16–17</option><option>18–25</option></select></label><label><span>Preferred contact method *</span><select value={form.contactMethod} onChange={(event) => setForm({ ...form, contactMethod: event.target.value as typeof form.contactMethod })}><option value="email">Email</option><option value="phone">Phone</option><option value="both">Both</option></select></label>{form.contactMethod !== "phone" && <label><span>Email</span><input type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} autoComplete="email" /></label>}{form.contactMethod !== "email" && <label><span>Phone</span><input type="tel" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} autoComplete="tel" /></label>}<label><span>Suburb or postcode (optional)</span><input value={form.suburb} onChange={(event) => setForm({ ...form, suburb: event.target.value })} /></label><label className="full"><span>Accessibility or communication needs (optional)</span><textarea value={form.accessibility} onChange={(event) => setForm({ ...form, accessibility: event.target.value })} rows={3} /><small>This is sent only with this booking and is not saved in an unfinished draft.</small></label></div><fieldset><legend>Safe contact choices</legend><label className="check-row"><input type="checkbox" checked={form.safeEmail} onChange={(event) => setForm({ ...form, safeEmail: event.target.checked })} /> It is safe to send an email</label><label className="check-row"><input type="checkbox" checked={form.safeCall} onChange={(event) => setForm({ ...form, safeCall: event.target.checked })} /> It is safe to call</label><label className="check-row"><input type="checkbox" checked={form.safeVoicemail} onChange={(event) => setForm({ ...form, safeVoicemail: event.target.checked })} /> It is safe to leave a voicemail</label></fieldset><fieldset><legend>Consent</legend><label className="check-row important"><input type="checkbox" checked={form.consent} onChange={(event) => setForm({ ...form, consent: event.target.checked })} /> I consent to first_step using these details to arrange and run this appointment.</label><label className="check-row important"><input type="checkbox" checked={form.acknowledge} onChange={(event) => setForm({ ...form, acknowledge: event.target.checked })} /> I understand first_step is not monitored 24/7 and is not emergency support.</label></fieldset><FlowButtons step={step} next={next} back={() => setStep(4)} submit /></form>}
-      {step === 6 && confirmation && <section className="confirmation-panel" aria-live="polite"><div className="confirmation-tick"><Check /></div><span className="eyebrow">Booked</span><h2>You have a time.</h2><p>A confirmation has been prepared for {confirmation.email || confirmation.phone}.</p><dl><div><dt>Date</dt><dd>{format(new Date(confirmation.startAt), "EEEE d MMMM yyyy")}</dd></div><div><dt>Time</dt><dd>{format(new Date(confirmation.startAt), "h:mm a")} · Australia/Melbourne</dd></div><div><dt>Worker</dt><dd>{workers.find((worker) => worker.id === confirmation.workerId)?.firstName}</dd></div><div><dt>Format</dt><dd>{formatLabels[confirmation.format]}</dd></div></dl>{confirmation.format === "video" && <p className="inline-note"><Video /> Your private video link will be sent before the appointment.</p>}<div className="confirmation-actions"><button className="button button-black" onClick={downloadCalendar}><CalendarDays /> Add to calendar</button><button className="button button-light" onClick={() => router.push("/account/appointments")}>Manage appointment</button></div><div className="demo-email"><span>Demo email preview</span><strong>Your first_step appointment is booked</strong><p>Hi {confirmation.participantName}, your conversation is booked for {format(new Date(confirmation.startAt), "EEEE d MMMM 'at' h:mm a")}. If this is no longer safe or suitable, use your management link to cancel or change it.</p></div><UrgentSupportBanner /></section>}
+      {step === 5 && (
+        <form className="booking-panel details-form" onSubmit={submit} noValidate>
+          <h2>Just enough detail to run the appointment.</h2>
+          <p className="required-note">* Required. We ask only for the contact detail needed for your selected method.</p>
+          <ConsentSummary />
+          <div className="form-grid">
+            <div className="form-field">
+              <label htmlFor="booking-name">Name you want us to use *</label>
+              <input id="booking-name" value={form.name} onChange={(event) => { setForm({ ...form, name: event.target.value }); clearFieldError("name"); }} autoComplete="given-name" required aria-invalid={Boolean(fieldErrors.name)} aria-describedby={fieldErrors.name ? "booking-name-error" : undefined} />
+              <FieldError id="booking-name-error">{fieldErrors.name}</FieldError>
+            </div>
+            <div className="form-field">
+              <label htmlFor="booking-ageBand">Age band *</label>
+              <select id="booking-ageBand" value={form.ageBand} onChange={(event) => { setForm({ ...form, ageBand: event.target.value as Appointment["ageBand"] }); clearFieldError("ageBand"); }} required aria-invalid={Boolean(fieldErrors.ageBand)} aria-describedby={fieldErrors.ageBand ? "booking-ageBand-error" : undefined}>
+                <option>15–17</option>
+                <option>18–25</option>
+              </select>
+              <FieldError id="booking-ageBand-error">{fieldErrors.ageBand}</FieldError>
+            </div>
+            <div className="form-field">
+              <label htmlFor="booking-contactMethod">How should we contact you? *</label>
+              <select id="booking-contactMethod" value={form.contactMethod} onChange={(event) => chooseContactMethod(event.target.value as ContactMethod)} required aria-invalid={Boolean(fieldErrors.contactMethod)} aria-describedby={fieldErrors.contactMethod ? "booking-contactMethod-error" : undefined}>
+                <option value="email">Email</option>
+                <option value="phone">Phone call</option>
+                <option value="sms">SMS/text</option>
+              </select>
+              <FieldError id="booking-contactMethod-error">{fieldErrors.contactMethod}</FieldError>
+            </div>
+            {form.contactMethod === "email" ? (
+              <div className="form-field">
+                <label htmlFor="booking-email">Email *</label>
+                <input id="booking-email" type="email" inputMode="email" value={form.email} onChange={(event) => { setForm({ ...form, email: event.target.value }); clearFieldError("email"); }} autoComplete="email" required aria-invalid={Boolean(fieldErrors.email)} aria-describedby={fieldErrors.email ? "booking-email-error" : undefined} />
+                <FieldError id="booking-email-error">{fieldErrors.email}</FieldError>
+              </div>
+            ) : (
+              <div className="form-field">
+                <label htmlFor="booking-phone">{form.contactMethod === "sms" ? "Mobile number" : "Phone number"} *</label>
+                <input id="booking-phone" type="tel" inputMode="tel" value={form.phone} onChange={(event) => { setForm({ ...form, phone: event.target.value }); clearFieldError("phone"); }} autoComplete="tel" required aria-invalid={Boolean(fieldErrors.phone)} aria-describedby={fieldErrors.phone ? "booking-phone-error" : "booking-phone-help"} />
+                <small id="booking-phone-help">{form.contactMethod === "sms" ? "Use a mobile number that can receive text messages." : "Use a number that is safe for us to call."}</small>
+                <FieldError id="booking-phone-error">{fieldErrors.phone}</FieldError>
+              </div>
+            )}
+            <div className="form-field full">
+              <label htmlFor="booking-safeContactNotes">Anything we should know before contacting you? Optional</label>
+              <textarea id="booking-safeContactNotes" value={form.safeContactNotes} onChange={(event) => { setForm({ ...form, safeContactNotes: event.target.value }); clearFieldError("safeContactNotes"); }} rows={4} maxLength={SAFE_CONTACT_NOTES_MAX} aria-invalid={Boolean(fieldErrors.safeContactNotes)} aria-describedby={`booking-safe-contact-help booking-safe-contact-count${fieldErrors.safeContactNotes ? " booking-safeContactNotes-error" : ""}`} />
+              <small id="booking-safe-contact-help">You can tell us about a safer time to contact you, a name we should use, whether we can leave a message, or anything else that would make the conversation feel safer.</small>
+              <span className="character-count" id="booking-safe-contact-count">{SAFE_CONTACT_NOTES_MAX - form.safeContactNotes.length} characters remaining</span>
+              <FieldError id="booking-safeContactNotes-error">{fieldErrors.safeContactNotes}</FieldError>
+            </div>
+            <div className="form-field full">
+              <label htmlFor="booking-accessibility">Accessibility or communication needs (optional)</label>
+              <textarea id="booking-accessibility" value={form.accessibility} onChange={(event) => { setForm({ ...form, accessibility: event.target.value }); clearFieldError("accessibility"); }} rows={3} maxLength={500} aria-invalid={Boolean(fieldErrors.accessibility)} aria-describedby={`booking-accessibility-help${fieldErrors.accessibility ? " booking-accessibility-error" : ""}`} />
+              <small id="booking-accessibility-help">This is sent only with this booking and is not saved in an unfinished draft.</small>
+              <FieldError id="booking-accessibility-error">{fieldErrors.accessibility}</FieldError>
+            </div>
+          </div>
+          <fieldset>
+            <legend>Safe contact choice *</legend>
+            <p className="fieldset-help">Confirm that the contact method you selected is safe to use.</p>
+            {form.contactMethod === "email" && <label className="check-row important"><input id="booking-safeEmail" type="checkbox" checked={form.safeEmail} onChange={(event) => { setForm({ ...form, safeEmail: event.target.checked }); clearFieldError("safeEmail"); }} aria-invalid={Boolean(fieldErrors.safeEmail)} aria-describedby={fieldErrors.safeEmail ? "booking-safeEmail-error" : undefined} /> It is safe to send an email</label>}
+            {form.contactMethod === "phone" && <><label className="check-row important"><input id="booking-safeCall" type="checkbox" checked={form.safeCall} onChange={(event) => { setForm({ ...form, safeCall: event.target.checked }); clearFieldError("safeCall"); }} aria-invalid={Boolean(fieldErrors.safeCall)} aria-describedby={fieldErrors.safeCall ? "booking-safeCall-error" : undefined} /> It is safe to call</label><label className="check-row"><input type="checkbox" checked={form.safeVoicemail} onChange={(event) => setForm({ ...form, safeVoicemail: event.target.checked })} /> It is safe to leave a voicemail</label></>}
+            {form.contactMethod === "sms" && <label className="check-row important"><input id="booking-safeText" type="checkbox" checked={form.safeText} onChange={(event) => { setForm({ ...form, safeText: event.target.checked }); clearFieldError("safeText"); }} aria-invalid={Boolean(fieldErrors.safeText)} aria-describedby={fieldErrors.safeText ? "booking-safeText-error" : undefined} /> It is safe to send an SMS/text message</label>}
+            <FieldError id="booking-safeEmail-error">{fieldErrors.safeEmail}</FieldError>
+            <FieldError id="booking-safeCall-error">{fieldErrors.safeCall}</FieldError>
+            <FieldError id="booking-safeText-error">{fieldErrors.safeText}</FieldError>
+          </fieldset>
+          <ConfidentialNotesDisclosure compact />
+          <PolicyDraftNotice />
+          <fieldset>
+            <legend>Consent *</legend>
+            <p className="consent-boundary"><strong>Referrals are a separate choice.</strong> Nothing is sent to a partner without clear consent. The serious-risk safeguarding exception explained above is not a referral.</p>
+            <label className="check-row important"><input id="booking-consent" type="checkbox" checked={form.consent} onChange={(event) => { setForm({ ...form, consent: event.target.checked }); clearFieldError("consent"); }} aria-invalid={Boolean(fieldErrors.consent)} aria-describedby={fieldErrors.consent ? "booking-consent-error" : undefined} /> I consent to first_step using these details to arrange and run this appointment.</label>
+            <FieldError id="booking-consent-error">{fieldErrors.consent}</FieldError>
+            <label className="check-row important"><input id="booking-acknowledge" type="checkbox" checked={form.acknowledge} onChange={(event) => { setForm({ ...form, acknowledge: event.target.checked }); clearFieldError("acknowledge"); }} aria-invalid={Boolean(fieldErrors.acknowledge)} aria-describedby={fieldErrors.acknowledge ? "booking-acknowledge-error" : undefined} /> I understand first_step is not monitored 24/7 and is not emergency support.</label>
+            <FieldError id="booking-acknowledge-error">{fieldErrors.acknowledge}</FieldError>
+          </fieldset>
+          <FlowButtons step={step} next={next} back={() => setStep(4)} submit />
+        </form>
+      )}
+      {step === 6 && confirmation && (
+        <section className="confirmation-panel" aria-live="polite">
+          <div className="confirmation-tick"><Check aria-hidden="true" /></div>
+          <span className="eyebrow">Booked</span>
+          <h2>Hi {confirmation.participantName.split(/\s+/)[0]}, your appointment is booked.</h2>
+          <p className="confirmation-lead">Thanks for booking for {format(new Date(confirmation.startAt), "EEEE d MMMM 'at' h:mm a")}. We’re looking forward to connecting with you.</p>
+          <p>If this contact is no longer safe or suitable, use the booking-management action below to cancel or change it.</p>
+          <dl>
+            <div><dt>Date</dt><dd>{format(new Date(confirmation.startAt), "EEEE d MMMM yyyy")}</dd></div>
+            <div><dt>Time</dt><dd>{format(new Date(confirmation.startAt), "h:mm a")} · Australia/Melbourne</dd></div>
+            <div><dt>Contact</dt><dd>{contactMethodLabels[confirmation.contactMethod]}</dd></div>
+            <div><dt>Appointment</dt><dd>{formatLabels[confirmation.format]}</dd></div>
+            <div><dt>Worker</dt><dd>{workers.find((worker) => worker.id === confirmation.workerId)?.firstName}</dd></div>
+          </dl>
+          {confirmation.format === "video" && <p className="inline-note"><Video aria-hidden="true" /> Your private video link will be sent before the appointment.</p>}
+          <div className="confirmation-actions">
+            <a className="button button-black" href={deploymentPath(`/account/appointments?manage=${encodeURIComponent(confirmation.managementToken)}`)}>Manage appointment</a>
+            <button className="button button-light" onClick={downloadCalendar}><CalendarDays aria-hidden="true" /> Add to calendar</button>
+            <a className="button button-light" href={deploymentPath("/consent")}>Consent</a>
+            <a className="button button-light" href={deploymentPath("/privacy")}>Privacy</a>
+          </div>
+          <div className="demo-email">
+            <span>Demo confirmation preview</span>
+            <strong>Your first_step appointment is booked</strong>
+            <p className="email-preview-copy">{buildAppointmentConfirmationText(confirmation, { managementUrl: deploymentPath(`/account/appointments?manage=${encodeURIComponent(confirmation.managementToken)}`) })}</p>
+          </div>
+          <a className="text-link" href={deploymentPath("/book")}>Book another appointment</a>
+          <UrgentSupportBanner />
+        </section>
+      )}
     </div>
   );
 }
@@ -567,13 +813,117 @@ function SafeTonight() {
   return <div className="task-page"><PageIntro eyebrow="Urgent housing and safety" title="Need somewhere safe tonight?" copy="Skip the questions. These external services are available now. first_step appointments are not emergency support." /><UrgentSupportBanner full /><div className="urgent-calls"><a href="tel:000"><strong>Immediate danger</strong><span>Call 000</span><Phone /></a><a href="tel:1800825955"><strong>Victoria homelessness support</strong><span>1800 825 955 · 24 hours</span><Phone /></a><a href="tel:1800551800"><strong>Kids Helpline · ages 5–25</strong><span>1800 55 1800 · 24/7</span><Phone /></a><a href="tel:1800737732"><strong>1800RESPECT</strong><span>1800 737 732 · text 0458 737 732</span><Phone /></a><a href="tel:131114"><strong>Lifeline</strong><span>13 11 14 · 24/7</span><Phone /></a></div><div className="boundary-box"><ShieldCheck /><div><h2>These services are external.</h2><p>first_step does not operate them. We list them because they may help sooner than a scheduled appointment.</p></div></div><div className="flow-actions"><a className="button button-light" href="/resources">Continue browsing</a><a className="button button-black" href="/book">Talk to someone</a></div></div>;
 }
 
+function FaqItem({ item, index }: { item: typeof FAQ_ITEMS[number]; index: number }) {
+  const [open, setOpen] = useState(false);
+  const buttonId = `faq-question-${index}`;
+  const panelId = `faq-answer-${index}`;
+  return (
+    <section className={`faq-item ${open ? "is-open" : ""}`}>
+      <h2>
+        <button type="button" id={buttonId} aria-expanded={open} aria-controls={panelId} onClick={() => setOpen((current) => !current)}>
+          <span>{item.question}</span>
+          <ChevronDown aria-hidden="true" />
+        </button>
+      </h2>
+      <div id={panelId} role="region" aria-labelledby={buttonId} hidden={!open}>
+        <p>{item.answer}</p>
+      </div>
+    </section>
+  );
+}
+
+function FaqPage() {
+  return (
+    <div className="task-page faq-page">
+      <PageIntro eyebrow="Questions, answered plainly" title="You can ask before you share." copy="Open any question. You do not need to book or give us your details to read the answers." />
+      <UrgentSupportBanner />
+      <PolicyDraftNotice />
+      <div className="faq-list">{FAQ_ITEMS.map((item, index) => <FaqItem key={item.question} item={item} index={index} />)}</div>
+      <aside className="faq-more">
+        <CircleHelp aria-hidden="true" />
+        <div><h2>Still unsure?</h2><p>Bring one question to a scheduled appointment, or keep browsing without sharing contact details.</p><div className="flow-actions"><a className="button button-black" href="/book">Talk to someone</a><a className="button button-light" href="/resources">Browse options</a></div></div>
+      </aside>
+    </div>
+  );
+}
+
 function StaticPage({ type }: { type: string }) {
   const pages: Record<string, { eyebrow: string; title: string; copy: string; content: ReactNode }> = {
-    about: { eyebrow: "About first_step", title: "Build the bridge. Back the person.", copy: "first_step makes the first step easier for young people facing housing instability, homelessness risk or barriers to financial stability.", content: <div className="about-composition"><div><h2>We sit earlier.</h2><p>We are not trying to replace housing services, TAFE, social enterprises or youth workers. We build a bridge that helps young people reach them.</p><div className="principle-list">{["Dignity without disclosure", "All work is paid work", "Practicality over performance", "Partnership over ego", "Small enough to test"].map((item, index) => <div key={item}><span>0{index + 1}</span><h3>{item}</h3></div>)}</div></div><aside className="about-boundaries"><img src="/brand/first_step_mascot.svg" alt="" /><div className="about-do-dont"><section><h2>What we do</h2><ul><li><Check /> Make the first step easier</li><li><Check /> Connect young people to qualified workers</li><li><Check /> Explain what happens next</li><li><Check /> Support consent-led warm referrals</li></ul></section><section><h2>What we do not do</h2><ul><li><X /> Provide emergency accommodation</li><li><X /> Replace specialist services</li><li><X /> Demand a full personal history</li><li><X /> Share participant information with sponsors</li></ul></section></div><div className="clear-boundary-callout"><ShieldCheck /><div><h2>Clear operating boundaries</h2><p>first_step is not emergency support, clinical care, legal advice, financial advice or housing provision. Qualified people and established organisations deliver those services.</p></div></div></aside></div> },
-    privacy: { eyebrow: "Plain-language privacy", title: "Collect less. Explain it clearly.", copy: "This is pilot policy copy for review, not final legal advice.", content: <><h2>What we collect</h2><p>For a booking: the name you use, age band, broad topics, safe contact details, accessibility needs you choose to share and the appointment time.</p><h2>Who can see it</h2><p>Your assigned worker and authorised pilot administrators. A referral partner sees only fields you approve. Sponsors never see participant-level data.</p><h2>What we do not use</h2><p>No advertising pixels, behavioural advertising, session replay or unrestricted sensitive notes.</p><h2>Your choices</h2><p>You can ask for your data, correct it, withdraw referral consent or request account deletion. Production retention periods require legal, privacy and safeguarding review.</p><a className="button button-black" href="/account">Open account choices</a></> },
-    consent: { eyebrow: "Consent, plainly", title: "Nothing about you, without you.", copy: "Booking consent and referral consent are separate choices.", content: <><h2>Booking consent</h2><p>You agree to first_step using the minimum details needed to arrange and run a conversation.</p><h2>Referral consent</h2><p>Before a warm referral, you see the partner, what they do, every field proposed for sharing and what may happen next. You can say no.</p><h2>Withdraw consent</h2><p>Tell your worker or use the account request. Withdrawal cannot undo information already lawfully sent, but it stops future sharing where possible.</p></> },
-    terms: { eyebrow: "Service status and terms", title: "A pilot, described honestly.", copy: "first_step is a demonstration pilot platform. It is not yet a commissioned live youth-work service.", content: <><h2>Use of this demonstration</h2><p>Sample bookings and dashboards are stored on this device. Do not enter real sensitive information.</p><h2>Information limits</h2><p>External crisis details are separated from demonstration partner and pathway content. Check current details with the relevant service.</p><h2>No emergency monitoring</h2><p>first_step messages and appointments are not monitored continuously. Call 000 in immediate danger.</p></> },
-    safety: { eyebrow: "Safety and urgent help", title: "Know the boundary. Get faster help.", copy: "first_step appointments are scheduled. They are not emergency or 24-hour crisis support.", content: <><SafeTonight /></> },
+    about: {
+      eyebrow: "About first_step",
+      title: "One useful step. On your terms.",
+      copy: "first_step exists to make support, study, work and referrals easier to reach when housing feels uncertain.",
+      content: (
+        <>
+          <section className="about-overview" aria-labelledby="about-why">
+            <div className="about-why">
+              <span className="eyebrow">Why first_step exists</span>
+              <h2 id="about-why">Getting help should not require a perfect plan or your whole life story.</h2>
+              <p>Housing instability can make every next step feel tangled. first_step offers a low-pressure bridge to a useful conversation, clear information and qualified services.</p>
+            </div>
+            <div className="about-fact-grid">
+              <article><UserRound aria-hidden="true" /><h2>Who it is for</h2><p>Young people aged 15–25 who are experiencing, or feel at risk of, housing instability.</p></article>
+              <article><Sparkles aria-hidden="true" /><h2>What it can help with</h2><p>Understanding support, study, paid work, practical options and consent-led referrals.</p></article>
+              <article><ShieldCheck aria-hidden="true" /><h2>What it cannot provide</h2><p>Emergency response, housing, legal advice, clinical care or a replacement for specialist services.</p></article>
+            </div>
+          </section>
+          <section className="about-approach" aria-labelledby="about-approach-title">
+            <div><span className="eyebrow">How the approach works</span><h2 id="about-approach-title">Five commitments for every first step.</h2><p>These are the boundaries we want a pilot to be judged against.</p></div>
+            <ol className="commitment-list">
+              {FIRST_STEP_COMMITMENTS.map((item, index) => <li key={item.title}><span>{String(index + 1).padStart(2, "0")}</span><div><h3>{item.title}</h3><p>{item.copy}</p></div></li>)}
+            </ol>
+          </section>
+          <UrgentSupportBanner />
+        </>
+      ),
+    },
+    privacy: {
+      eyebrow: "Plain-language privacy",
+      title: "Collect less. Explain it clearly.",
+      copy: "Understand what may be recorded, who may see it and the choices you have.",
+      content: (
+        <>
+          <PolicyDraftNotice />
+          <h2>What we collect for a booking</h2>
+          <p>The name you use, your age band, broad topics, the contact detail needed for your selected method, your appointment time and any accessibility or safer-contact instructions you choose to share.</p>
+          <ConfidentialNotesDisclosure />
+          <div className="policy-choice-grid">
+            <section><h2>Consented referrals</h2><p>A referral partner sees only the fields and summary you have clearly approved. You can say no, and that does not cancel your first_step appointment.</p></section>
+            <section><h2>Safeguarding exception</h2><p>Separately, a worker may need to share relevant information if they believe you or someone else may be at serious risk of harm. Ask your worker to explain this boundary before the conversation begins.</p></section>
+          </div>
+          <h2>Who can see booking information</h2>
+          <p>Your assigned worker and authorised pilot administrators. Sponsors receive grouped pilot results only and do not see participant-level information.</p>
+          <h2>Your choices</h2>
+          <p>You can ask what is recorded, request a copy, correct details, or withdraw a referral consent. Production access, retention and deletion procedures still require final legal, privacy and safeguarding approval.</p>
+          <a className="button button-black" href="/account">Open account choices</a>
+        </>
+      ),
+    },
+    consent: {
+      eyebrow: "Consent, plainly",
+      title: "Know what you are agreeing to.",
+      copy: "Booking consent, referral consent and safeguarding responsibilities are different things.",
+      content: (
+        <>
+          <PolicyDraftNotice />
+          <h2>Booking consent</h2>
+          <p>You agree to first_step using the minimum details needed to arrange and run your appointment. Optional safer-contact or accessibility information is used only to support that booking.</p>
+          <ConfidentialNotesDisclosure />
+          <div className="policy-choice-grid">
+            <section><h2>Referral consent is your choice</h2><p>Before a warm referral, you see the partner, what it does, every field proposed for sharing and what may happen next. Nothing is sent until you clearly agree.</p></section>
+            <section><h2>Serious risk is a separate exception</h2><p>If a worker believes you or someone else may be at serious risk of harm, safeguarding responsibilities may require relevant information to be shared. This is not the same as agreeing to a referral.</p></section>
+          </div>
+          <h2>Ask, pause or change your mind</h2>
+          <p>You can ask questions before the conversation, choose not to answer something, or withdraw a referral consent. Your worker can explain what can and cannot be changed after information has already been shared.</p>
+        </>
+      ),
+    },
+    terms: {
+      eyebrow: "Service status and terms",
+      title: "A pilot, described honestly.",
+      copy: "first_step is a demonstration pilot platform. It is not yet a commissioned live youth-work service.",
+      content: <><h2>Use of this demonstration</h2><p>Sample bookings and dashboards are stored on this device. Do not enter real sensitive information.</p><h2>Information limits</h2><p>External crisis details are separated from demonstration partner and pathway content. Check current details with the relevant service.</p><h2>No emergency monitoring</h2><p>first_step messages and appointments are not monitored continuously. Call 000 in immediate danger.</p></>,
+    },
   };
   const page = pages[type] ?? pages.about;
   return <div className="task-page static-page"><PageIntro eyebrow={page.eyebrow} title={page.title} copy={page.copy} /><article className={`prose ${type === "about" ? "about-prose" : ""}`}>{page.content}</article></div>;
@@ -748,11 +1098,31 @@ function AppointmentSummary({ appointment }: { appointment: Appointment }) {
   return <div className="appointment-summary"><CalendarDays /><div><strong>{format(new Date(appointment.startAt), "EEEE d MMMM · h:mm a")}</strong><span>{formatLabels[appointment.format]} with {workers.find((worker) => worker.id === appointment.workerId)?.firstName}</span><small className={`status status-${appointment.status}`}>{appointment.status.replaceAll("_", " ")}</small></div></div>;
 }
 
+function AppointmentContactDetails({ appointment, audience }: { appointment: Appointment; audience: "participant" | "worker" }) {
+  const safeChoice = appointment.contactMethod === "email"
+    ? "Email confirmed safe"
+    : appointment.contactMethod === "sms"
+      ? "SMS/text confirmed safe"
+      : appointment.safeToVoicemail
+        ? "Call and voicemail confirmed safe"
+        : "Call confirmed safe; do not leave voicemail";
+  return (
+    <section className="booking-private-details" aria-label={audience === "worker" ? "Private booking contact details" : "Your contact instructions"}>
+      <dl>
+        <div><dt>Contact method</dt><dd>{contactMethodLabels[appointment.contactMethod]}</dd></div>
+        <div><dt>Safe contact choice</dt><dd>{safeChoice}</dd></div>
+        {appointment.safeContactNotes && <div className="full"><dt>Contact instructions</dt><dd>{appointment.safeContactNotes}</dd></div>}
+        {audience === "worker" && appointment.accessibilityNeeds && <div className="full"><dt>Accessibility or communication needs</dt><dd>{appointment.accessibilityNeeds}</dd></div>}
+      </dl>
+    </section>
+  );
+}
+
 function ParticipantAppointments({ state }: { state: DemoState }) {
-  const active = state.appointments.filter((item) => !item.status.startsWith("cancelled"));
-  const previous = state.appointments.filter((item) => item.status.startsWith("cancelled") || item.status === "completed");
+  const active = state.appointments.filter((item) => item.status === "requested" || item.status === "confirmed");
+  const previous = state.appointments.filter((item) => !active.includes(item));
   const reschedule = (appointment: Appointment) => demoRepository.updateAppointment(appointment.id, { startAt: addDays(new Date(appointment.startAt), 7).toISOString(), endAt: addDays(new Date(appointment.endAt), 7).toISOString() });
-  return <div className="dashboard-page"><DashboardNav role="participant" /><main><PageIntro eyebrow="Appointments" title="Your conversations." copy="Change or cancel without explaining why." /><h2>Upcoming</h2>{active.length ? <div className="appointment-list">{active.map((appointment) => <article key={appointment.id}><AppointmentSummary appointment={appointment} /><div><button className="button button-light" onClick={() => reschedule(appointment)}>Move one week later</button><button className="button button-danger-outline" onClick={() => demoRepository.updateAppointment(appointment.id, { status: "cancelled_participant" })}>Cancel</button></div></article>)}</div> : <EmptyState title="No upcoming appointments.">Book when talking feels useful.<br /><a href="/book">Find a time</a></EmptyState>}<h2>Previous</h2>{previous.length ? <div className="appointment-list">{previous.map((appointment) => <article key={appointment.id}><AppointmentSummary appointment={appointment} /></article>)}</div> : <p className="muted">No previous appointments in this demo.</p>}</main></div>;
+  return <div className="dashboard-page"><DashboardNav role="participant" /><main><PageIntro eyebrow="Appointments" title="Your conversations." copy="Change or cancel without explaining why." /><h2>Upcoming</h2>{active.length ? <div className="appointment-list">{active.map((appointment) => <article key={appointment.id}><div className="appointment-card-copy"><AppointmentSummary appointment={appointment} /><AppointmentContactDetails appointment={appointment} audience="participant" /></div><div className="appointment-actions"><button className="button button-light" onClick={() => reschedule(appointment)}>Move one week later</button><button className="button button-danger-outline" onClick={() => demoRepository.updateAppointment(appointment.id, { status: "cancelled_participant" })}>Cancel</button></div></article>)}</div> : <EmptyState title="No upcoming appointments.">Book when talking feels useful.<br /><a href="/book">Find a time</a></EmptyState>}<h2>Previous</h2>{previous.length ? <div className="appointment-list">{previous.map((appointment) => <article key={appointment.id}><AppointmentSummary appointment={appointment} /></article>)}</div> : <p className="muted">No previous appointments in this demo.</p>}</main></div>;
 }
 
 export function ReferralConsentCard({ referral, onConsent, onDecline }: { referral: DemoState["referrals"][number]; onConsent: () => void; onDecline: () => void }) {
@@ -769,7 +1139,7 @@ function WorkerPage({ section, state }: { section: string; state: DemoState }) {
   if (section === "availability") return <div className="dashboard-page"><DashboardNav role="worker" /><main><PageIntro eyebrow="Worker availability" title="Set hours without calendar clutter." copy="Recurring hours, exceptions, formats, locations, notice and capacity." /><div className="availability-editor">{["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"].map((day, index) => <div key={day}><label><input type="checkbox" checked={availability[index]} onChange={(event) => { setAvailabilitySaved(false); setAvailability(availability.map((item, itemIndex) => itemIndex === index ? event.target.checked : item)); }} /><strong>{day}</strong></label>{availability[index] ? <><input aria-label={`${day} start time`} type="time" defaultValue={index % 2 ? "12:00" : "10:00"} /><span>to</span><input aria-label={`${day} end time`} type="time" defaultValue={index % 2 ? "18:00" : "16:00"} /><select aria-label={`${day} appointment format`} defaultValue="all"><option value="all">All enabled formats</option><option>Phone</option><option>Video</option><option>Text</option><option>In person</option></select></> : <span>Unavailable</span>}</div>)}</div><div className="settings-grid"><label><span>Minimum booking notice</span><select defaultValue="12"><option value="4">4 hours</option><option value="12">12 hours</option><option value="24">24 hours</option></select></label><label><span>Booking window</span><select defaultValue="21"><option value="14">14 days</option><option value="21">21 days</option><option value="28">28 days</option></select></label><label><span>Daily capacity</span><input type="number" min="1" max="8" defaultValue="5" /></label></div><h2>Exceptions</h2><div className="exception-row"><CalendarDays /><div><strong>Friday 14 August</strong><span>Unavailable · leave</span></div><button className="button button-light">Edit</button></div><button className="button button-black" onClick={() => setAvailabilitySaved(true)}>Save availability</button>{availabilitySaved && <p className="save-confirmation" role="status"><CheckCircle2 /> Availability saved in demo mode.</p>}</main></div>;
   if (section === "referrals") return <div className="dashboard-page"><DashboardNav role="worker" /><main><PageIntro eyebrow="Warm referrals" title="Move only with consent." copy="Track offered, consented, sent and accepted referrals." /><div className="table-wrap"><table><thead><tr><th>Participant</th><th>Partner</th><th>Status</th><th>Updated</th></tr></thead><tbody>{state.referrals.map((referral) => <tr key={referral.id}><td>Jamie</td><td>{referral.partnerName}</td><td><span className={`status status-${referral.status}`}>{referral.status.replaceAll("_", " ")}</span></td><td>Today</td></tr>)}</tbody></table></div></main></div>;
   const appointments = state.appointments;
-  return <div className="dashboard-page"><DashboardNav role="worker" /><main><div className="dashboard-welcome"><span className="eyebrow">Tuesday · Worker demo</span><h1>Good morning, Maya.</h1><p>Keep records broad. This is not a clinical case-management system.</p></div><div className="worker-stats"><ImpactMetric value={`${appointments.length}`} label="Upcoming conversations" /><ImpactMetric value="2" label="Follow-ups requested" /><ImpactMetric value={`${state.referrals.filter((item) => item.status === "offered").length}`} label="Consent choices waiting" /></div><h2>Appointment queue</h2>{appointments.length ? <div className="appointment-list">{appointments.map((appointment) => <article key={appointment.id}><AppointmentSummary appointment={appointment} /><div><button className="button button-black" onClick={() => demoRepository.updateAppointment(appointment.id, { status: "confirmed" })}>Confirm</button><button className="button button-light" onClick={() => demoRepository.updateAppointment(appointment.id, { status: "completed" })}>Mark completed</button></div></article>)}</div> : <EmptyState title="No appointments yet.">Book one as the participant, then return to this view.</EmptyState>}<section className="outcome-options"><h2>Allowed outcome data</h2><div>{["Conversation completed", "Information provided", "Follow-up requested", "Warm referral offered", "Participant declined referral", "No further action requested"].map((item) => <span key={item}>{item}</span>)}</div><p>No diagnoses, trauma histories or extensive case notes.</p></section></main></div>;
+  return <div className="dashboard-page"><DashboardNav role="worker" /><main><div className="dashboard-welcome"><span className="eyebrow">Tuesday · Worker demo</span><h1>Good morning, Maya.</h1><p>Keep records broad. This is not a clinical case-management system.</p></div><div className="worker-stats"><ImpactMetric value={`${appointments.length}`} label="Upcoming conversations" /><ImpactMetric value="2" label="Follow-ups requested" /><ImpactMetric value={`${state.referrals.filter((item) => item.status === "offered").length}`} label="Consent choices waiting" /></div><h2>Appointment queue</h2>{appointments.length ? <div className="appointment-list">{appointments.map((appointment) => <article key={appointment.id}><div className="appointment-card-copy"><AppointmentSummary appointment={appointment} /><AppointmentContactDetails appointment={appointment} audience="worker" /></div><div className="appointment-actions"><button className="button button-black" onClick={() => demoRepository.updateAppointment(appointment.id, { status: "confirmed" })}>Confirm</button><button className="button button-light" onClick={() => demoRepository.updateAppointment(appointment.id, { status: "completed" })}>Mark completed</button></div></article>)}</div> : <EmptyState title="No appointments yet.">Book one as the participant, then return to this view.</EmptyState>}<section className="outcome-options"><h2>Allowed outcome data</h2><div>{["Conversation completed", "Information provided", "Follow-up requested", "Warm referral offered", "Participant declined referral", "No further action requested"].map((item) => <span key={item}>{item}</span>)}</div><p>No diagnoses, trauma histories or extensive case notes.</p></section></main></div>;
 }
 
 function AdminPage({ section, state }: { section: string; state: DemoState }) {
@@ -782,7 +1152,7 @@ function AdminPage({ section, state }: { section: string; state: DemoState }) {
     "service-settings": { title: "Set honest service expectations.", copy: "Booking remains available when closed. Live-contact language changes.", items: ["Response hours · Mon–Fri, 9am–6pm", "Appointment duration · 30 minutes", "Buffer · 15 minutes", "Booking window · 21 days"] },
   };
   if (sectionData[section]) { const data = sectionData[section]; return <div className="dashboard-page"><DashboardNav role="admin" /><main><PageIntro eyebrow="Pilot administration" title={data.title} copy={data.copy} /><div className="admin-simple-list">{data.items.map((item) => <article key={item}><CheckCircle2 /><strong>{item}</strong><button className="button button-light">Edit</button></article>)}</div></main></div>; }
-  return <div className="dashboard-page"><DashboardNav role="admin" /><main><div className="dashboard-welcome"><span className="eyebrow">Aggregate view only</span><h1>Pilot overview.</h1><p>Participant details do not belong in impact reporting.</p></div><div className="impact-grid compact"><ImpactMetric value={`${state.appointments.length + 18}`} label="Appointments booked · demo" /><ImpactMetric value="68%" label="Pathways completed · demo" /><ImpactMetric value="61%" label="Referrals accepted · demo" /><ImpactMetric value="3" label="Resources need review" /></div><section className="admin-boundary"><ShieldCheck /><div><h2>Privacy boundary active</h2><p>This overview cannot access names, contact details, messages or participant timelines.</p></div></section><h2>Priority checks</h2><div className="admin-simple-list"><article><AlertTriangle /><strong>3 resources have not been checked in 90 days</strong><a className="button button-light" href="/admin/resources">Review</a></article><article><CheckCircle2 /><strong>Service hours are published and current</strong><a className="button button-light" href="/admin/service-settings">View</a></article></div></main></div>;
+  return <div className="dashboard-page"><DashboardNav role="admin" /><main><div className="dashboard-welcome"><span className="eyebrow">Aggregate view only</span><h1>Pilot overview.</h1><p>Participant details do not belong in impact reporting.</p></div><div className="impact-grid compact"><ImpactMetric value={`${state.appointments.length + 18}`} label="Appointments booked · demo" /><ImpactMetric value="68%" label="Pathways completed · demo" /><ImpactMetric value="61%" label="Referrals accepted · demo" /><ImpactMetric value="3" label="Resources need review" /></div><section className="admin-boundary"><ShieldCheck /><div><h2>Privacy boundary active</h2><p>This overview cannot access names, contact details, messages or participant timelines.</p></div></section><section className="pilot-readiness"><div className="pilot-readiness-heading"><AlertTriangle aria-hidden="true" /><div><span className="eyebrow">Internal draft</span><h2>Pilot readiness is not complete.</h2><p>Interface changes do not make a pilot safe to operate. Human leads must approve and evidence every item below before launch.</p></div></div><ul>{PILOT_READINESS_ITEMS.map((item) => <li key={item}><span aria-hidden="true" />{item}</li>)}</ul></section><h2>Priority checks</h2><div className="admin-simple-list"><article><AlertTriangle /><strong>3 resources have not been checked in 90 days</strong><a className="button button-light" href="/admin/resources">Review</a></article><article><CheckCircle2 /><strong>Service hours are published and current</strong><a className="button button-light" href="/admin/service-settings">View</a></article></div></main></div>;
 }
 
 function CommitteePage() {
@@ -814,7 +1184,9 @@ export default function FirstStepApp({ initialPathname = "/" }: { initialPathnam
   else if (pathname === "/resources") page = <ResourcesPage state={state} />;
   else if (parts[0] === "resources" && parts[1]) page = <ResourceDetail slug={parts[1]} state={state} />;
   else if (parts[0] === "pathways" && parts[1]) page = <PathwayPage type={parts[1]} />;
-  else if (["about", "privacy", "consent", "terms", "safety"].includes(parts[0])) page = <StaticPage type={parts[0]} />;
+  else if (pathname === "/faq") page = <FaqPage />;
+  else if (pathname === "/safety") page = <SafeTonight />;
+  else if (["about", "privacy", "consent", "terms"].includes(parts[0])) page = <StaticPage type={parts[0]} />;
   else if (pathname === "/partners") page = <PartnersPage />;
   else if (pathname === "/impact") page = <ImpactPage />;
   else if (pathname === "/impact-dashboard") page = <ImpactDashboardPage />;

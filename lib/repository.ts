@@ -1,6 +1,6 @@
 "use client";
 
-import type { Appointment, DemoState, Referral, Resource, Role } from "./types";
+import type { AgeBand, Appointment, ContactMethod, DemoState, Referral, Resource, Role } from "./types";
 import { seedReferrals } from "./demo-data";
 
 export interface FirstStepRepository {
@@ -16,6 +16,12 @@ export interface FirstStepRepository {
 
 const STORAGE_KEY = "first_step_demo_state_v1";
 
+type LegacyAppointment = Omit<Appointment, "ageBand" | "contactMethod" | "safeToText"> & {
+  ageBand: AgeBand | "16–17";
+  contactMethod: ContactMethod | "both";
+  safeToText?: boolean;
+};
+
 const initialState = (): DemoState => ({
   role: "participant",
   appointments: [],
@@ -25,13 +31,30 @@ const initialState = (): DemoState => ({
   merchWaitlist: [],
 });
 
+function normaliseAppointment(appointment: LegacyAppointment): Appointment {
+  const contactMethod: ContactMethod = appointment.contactMethod === "both"
+    ? appointment.email ? "email" : "phone"
+    : appointment.contactMethod;
+  return {
+    ...appointment,
+    ageBand: appointment.ageBand === "16–17" ? "15–17" : appointment.ageBand,
+    contactMethod,
+    safeToText: appointment.safeToText ?? false,
+  };
+}
+
 export class DemoRepository implements FirstStepRepository {
   private read(): DemoState {
     if (typeof window === "undefined") return initialState();
     const saved = window.localStorage.getItem(STORAGE_KEY);
     if (!saved) return initialState();
     try {
-      return { ...initialState(), ...(JSON.parse(saved) as DemoState) };
+      const parsed = JSON.parse(saved) as Partial<Omit<DemoState, "appointments">> & { appointments?: LegacyAppointment[] };
+      return {
+        ...initialState(),
+        ...parsed,
+        appointments: (parsed.appointments ?? []).map(normaliseAppointment),
+      };
     } catch {
       return initialState();
     }
